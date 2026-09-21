@@ -20,13 +20,20 @@
 
 ## 仓库内容
 
+```text
+Linux/           Linux 基础与 Shell 编程
+container/       容器化与容器编排
+common server/   常用服务
+```
+
 | 文件 | 规模 | 覆盖内容 |
 |------|------|---------|
-| [`Linux-note.md`](Linux-note.md) | 441 行 | 一切皆文件、目录结构、文件与目录操作、Vim、开关机与登录注销、用户与组、运行级别、帮助命令；进阶专题：退出登录后任务中断的原因与解法（nohup / setsid / tmux / screen / systemd user） |
-| [`shell-note-zh.md`](shell-note-zh.md) | 870 行 | Shell 编程中文版：shebang、Bash 特性、父 shell 与子 shell 执行环境、变量、字符串操作、命令、脚本开发（函数 / 运算 / 条件 / 循环） |
-| [`shell.md`](shell.md) | 842 行 | 上面那份的英文原稿，章节一一对应；保留英文是想练原版术语的可以直接读 |
-| [`docker-note.md`](docker-note.md) | 2462 行 | 安装、Docker 结构与镜像原理、常用命令、容器卷、Dockerfile（含分层缓存与构建实战）、Docker 网络（docker0 / veth pair / 自定义网络）、Compose、Swarm 集群与 stack/secret |
-| [`k8s-note.md`](k8s-note.md) | 2979 行 | 基础概念与架构 → kubeadm 部署集群与 Dashboard → 资源清单 / Namespace / Pod 生命周期 / Deployment / Service / Ingress / 存储（PV·PVC·SC·ConfigMap·Secret）/ 调度 / kubectl 排障工具箱 / 资源治理 → 进阶专题（HPA、SQL 上 K8s 可行性、StatefulSet、Job·DaemonSet·CronJob、安全认证鉴权准入与 RBAC、Helm 与生态组件、证书续期与 etcd 备份） |
+| [`Linux-note.md`](Linux/Linux-note.md) | 1109 行 | 一切皆文件、目录结构、文件与目录操作（含 `ls` 长格式逐列详解）、Vim、开关机与登录注销、用户与用户组、**权限管理**（chmod / chown、属主属组、数字与符号模式、setuid·setgid·sticky、批量修复目录权限）、**文本三剑客**（grep / sed / awk、正则 BRE 与 ERE、管道符与重定向）、运行级别、帮助命令；进阶专题：退出登录后任务中断的原因与解法（nohup / setsid / tmux / screen / systemd user） |
+| [`shell-note-zh.md`](Linux/shell-note-zh.md) | 870 行 | Shell 编程中文版：shebang、Bash 特性、父 shell 与子 shell 执行环境、变量、字符串操作、命令、脚本开发（函数 / 运算 / 条件 / 循环） |
+| [`shell.md`](Linux/shell.md) | 842 行 | 英文原稿，章节一一对应；保留英文是想练原版术语的可以直接读 |
+| [`docker-note.md`](container/docker-note.md) | 2462 行 | 安装、Docker 结构与镜像原理、常用命令、容器卷、Dockerfile（含分层缓存与构建实战）、Docker 网络（docker0 / veth pair / 自定义网络）、Compose、Swarm 集群与 stack/secret |
+| [`k8s-note.md`](container/k8s-note.md) | 2979 行 | 基础概念与架构 → kubeadm 部署集群与 Dashboard → 资源清单 / Namespace / Pod 生命周期 / Deployment / Service / Ingress / 存储（PV·PVC·SC·ConfigMap·Secret）/ 调度 / kubectl 排障工具箱 / 资源治理 → 进阶专题（HPA、SQL 上 K8s 可行性、StatefulSet、Job·DaemonSet·CronJob、安全认证鉴权准入与 RBAC、Helm 与生态组件、证书续期与 etcd 备份） |
+| [`NFS.md`](common%20server/NFS.md) | 1018 行 | NFS 共享存储：NFS 与 RPC/rpcbind 的端口注册原理、版本演进（v2 → v4.2）、安装部署与防火墙 / SELinux、`/etc/exports` 语法与参数全表、客户端挂载选项、fstab 与 autofs 自动挂载、root_squash 与 UID 映射的权限模型、14 条排障速查、与 K8s PV / StorageClass 的联动、性能与安全加固 |
 | `LICENSE` | — | MIT License，Copyright (c) 2026 we1l |
 
 ---
@@ -53,13 +60,13 @@
 
 | 方向 | 待补内容 |
 |------|---------|
-| 常用服务 | NFS、堡垒机、DNS、邮件服务器 |
+| 常用服务 | 堡垒机、DNS、邮件服务器（NFS 已整理，见上表） |
 | Web 服务 | Nginx、Tomcat、LVS + Keepalived + HAProxy |
 | 数据库 | MySQL、Redis 等主流数据库的部署、备份与故障处理 |
 | 自动化 | Ansible、Jenkins |
 | 可观测 | Prometheus + Grafana、EFK 日志栈 |
 
-> 补充节奏是「先在自己环境里搭一遍、踩完坑，再整理笔记」，所以更新不定期——目录文件就是当前进度。
+> 补充无法确保及时，整理进度有限，所以更新不定期——目录文件就是当前进度。
 
 ## 笔记版式约定
 

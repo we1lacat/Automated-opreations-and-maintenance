@@ -87,10 +87,10 @@ common server/   常用服务
 
 | 组件 | 版本 / 说明 |
 |------|------------|
-| Kubernetes | 部署示例基于 kubeadm v1.20.x；版本相关结论按上文方式单独标注 |
+| Kubernetes | 部署示例基于 kubeadm v1.30.x；版本相关结论按上文方式单独标注 |
 | CNI / Ingress | Calico；ingress-nginx v0.46.0 |
 | Docker | Engine 27.3.1、Compose v2.29.1 |
-| 镜像源 | 示例中给出国内镜像（阿里云等），境外拉不动时替换即可 |
+| 镜像源 | 示例中给出国内镜像（阿里云等），境外源失效时替换即可 |
 
 ## 怎么用这份笔记
 

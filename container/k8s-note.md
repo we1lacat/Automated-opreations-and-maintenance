@@ -1,10 +1,12 @@
 # Kubernetes 实战入门
 
-> **定位一句话**：Kubernetes（K8s）= 生产级别的容器编排平台，负责自动部署、扩缩容、自愈、负载均衡一堆容器。
+> **定位**：Kubernetes（K8s）= 生产级别的容器编排平台，负责自动部署、扩缩容、自愈、负载均衡一堆容器。
+>   
 > 和 Docker Swarm 一个赛道（Swarm 那篇在 `docker-note.md` 里写过），但 K8s 是 Google 拿 10 年 Borg 经验开源出来的，生态碾压，事实标准。
 >
 > **学习路线（进阶目标）**：
-> 资源清单（yaml 语法、Pod 生命周期）→ Pod 控制器（各控制器特点）→ 服务发现（SVC 原理）→ 存储（多种存储类型选型）→ 安全（认证/鉴权/访问控制）→ HELM（类似 Linux yum，模板自定义、部署常用插件）→ 运维（如改 kubeadm 证书有效期到 10 年）
+>   
+> 资源清单（yaml 语法、Pod 生命周期）→ Pod 控制器（各控制器特点）→ 服务发现（SVC 原理）→ 存储（多种存储类型选型）→ 安全（认证/鉴权/访问控制）→ HELM（类似 Linux yum，模板自定义、部署常用插件）
 
 ---
 
@@ -24,7 +26,7 @@
 4. Deployment（多副本 / 扩缩容 / 自愈 / 滚动更新 / 版本回退）
 5. Service（ClusterIP / NodePort / LoadBalancer / ExternalName / kube-proxy 两模式）
 6. Ingress（安装 / 使用 / 域名访问 / 路径重写 / 流量限制）
-7. 存储抽象（环境准备 / 原生挂载 / PV&PVC / StorageClass / ConfigMap / Secret）
+7. 存储抽象（环境准备 / 原生挂载 / PV\&PVC / StorageClass / ConfigMap / Secret）
 8. 集群调度（调度过程 / 指定节点 / 亲和性 / 污点容忍）
 9. kubectl 排障工具箱（命令总表 / 三板斧 / 症状速查）
 10. 资源治理（PDB / ResourceQuota / LimitRange）
@@ -59,26 +61,26 @@ Kubernetes 这个词来自希腊语，意思是「舵手」或「领航员」，
 
 ### K8s 能干什么
 
-| 能力 | 说明 |
-|------|------|
-| **自动装箱** | 按 CPU/内存请求自动把容器调度到合适的节点 |
-| **自愈** | 容器挂了自动重启、节点挂了自动把 Pod 挪到别的节点重建 |
-| **水平扩展** | 按 CPU 等指标自动扩缩副本数（HPA，见进阶专题） |
+| 能力              | 说明                                       |
+| --------------- | ---------------------------------------- |
+| **自动装箱**        | 按 CPU/内存请求自动把容器调度到合适的节点                  |
+| **自愈**          | 容器挂了自动重启、节点挂了自动把 Pod 挪到别的节点重建            |
+| **水平扩展**        | 按 CPU 等指标自动扩缩副本数（HPA，见进阶专题）              |
 | **服务发现 & 负载均衡** | 用 Service 名称访问一组 Pod，自带负载均衡，不用自己 nginx分流 |
-| **自动发布 / 回滚** | 滚动更新不停机，发布炸了轻松命令回滚 |
-| **密钥和配置管理** | ConfigMap / Secret 热更新配置，不用重新打镜像 |
-| **存储编排** | 本地盘、NFS、云盘统一抽象成 PV，随 Pod 挂载 |
+| **自动发布 / 回滚**   | 滚动更新不停机，发布炸了轻松命令回滚                       |
+| **密钥和配置管理**     | ConfigMap / Secret 热更新配置，不用重新打镜像         |
+| **存储编排**        | 本地盘、NFS、云盘统一抽象成 PV，随 Pod 挂载              |
 
 ### 和 Swarm 的关系（快速对齐）
 
-| 项目 | Docker Swarm | Kubernetes |
-|------|--------------|------------|
-| 出身 | Docker 自带 | Google Borg 开源 |
-| 门槛 | 低，会 docker 就行 | 高，概念繁杂 |
-| 生态 | 几乎停滞 | CNCF 全家桶，事实标准 |
-| 适合 | 小团队、内部工具 | 中大型、长期演进的项目 |
+| 项目 | Docker Swarm  | Kubernetes     |
+| -- | ------------- | -------------- |
+| 出身 | Docker 自带     | Google Borg 开源 |
+| 门槛 | 低，会 docker 就行 | 高，概念繁杂         |
+| 生态 | 几乎停滞          | CNCF 全家桶，事实标准  |
+| 适合 | 小团队、内部工具      | 中大型、长期演进的项目    |
 
-> **新项目学/用 K8s**。Swarm 的价值是帮你理解「编排」这个概念（跨机调度 + 自愈 + 滚动更新），概念完全通用。
+> **新项目学/用 K8s**。Swarm 的价值是帮你理解「编排」这个概念（跨机调度 + 自愈 + 滚动更新），概念通用。
 
 ---
 
@@ -115,13 +117,13 @@ kube-scheduler ──挑出没绑定节点的 Pod，选好节点，写回绑定�
 
 先给一份面试口诀版：
 
-| 组件 | 一句话口诀 |
-|------|-----------|
-| **kube-apiserver** | 所有服务访问统一入口 |
-| **kube-controller-manager** | 维持副本期望数目 |
-| **kube-scheduler** | 负责调度任务，选择合适的节点分配任务 |
-| **etcd** | 键值对数据库，储存 K8s 集群所有重要信息（持久化） |
-| **cloud-controller-manager** | 和云厂商 API 交互（云 LB、节点、路由） |
+| 组件                           | 一句话口诀                       |
+| ---------------------------- | --------------------------- |
+| **kube-apiserver**           | 所有服务访问统一入口                  |
+| **kube-controller-manager**  | 维持副本期望数目                    |
+| **kube-scheduler**           | 负责调度任务，选择合适的节点分配任务          |
+| **etcd**                     | 键值对数据库，储存 K8s 集群所有重要信息（持久化） |
+| **cloud-controller-manager** | 和云厂商 API 交互（云 LB、节点、路由）     |
 
 具体为：
 
@@ -137,19 +139,18 @@ kube-scheduler ──挑出没绑定节点的 Pod，选好节点，写回绑定�
 
 1. **kubelet**：运行在每个节点上的节点代理。直接跟容器引擎（containerd/docker）交互实现**容器生命周期管理**——创建、启动、监控、销毁，同时把节点和 Pod 状态上报给 apiserver。Scheduler 只是指挥，**真正落地干活的永远是 kubelet**。
 2. **kube-proxy**：每个节点上的网络代理。监听 Service 和 Endpoint 变化，把规则写入 **iptables / ipvs**，实现 Service 的转发和负载均衡——「访问 Service IP」可行。
-
 3. **容器运行时**：containerd（新标配）或 docker，事实上跑容器的。
 
 #### 2.2.3 生态组件（第三方，了解即可）
 
-| 组件 | 作用 |
-|------|------|
-| **CoreDNS** | 为集群中的 Service 创建域名 → IP 解析，`svc名.命名空间.svc.cluster.local` 直接访问 |
-| **Dashboard** | 给 K8s 集群提供 B/S 结构的可视化访问体系 |
-| **Ingress Controller** | 官方 Service 只能四层代理，Ingress 实现**七层**（HTTP 域名/路径）代理 |
-| **Federation** | 跨多个 K8s 集群统一管理，项目基本废弃，知道概念即可 |
-| **Prometheus** | 集群监控（指标采集 + 告警 + Grafana 可视化），云原生监控标准 |
-| **ELK / EFK** | 集群日志统一收集、检索、分析平台 |
+| 组件                     | 作用                                                            |
+| ---------------------- | ------------------------------------------------------------- |
+| **CoreDNS**            | 为集群中的 Service 创建域名 → IP 解析，`svc名.命名空间.svc.cluster.local` 直接访问 |
+| **Dashboard**          | 给 K8s 集群提供 B/S 结构的可视化访问体系                                     |
+| **Ingress Controller** | 官方 Service 只能四层代理，Ingress 实现**七层**（HTTP 域名/路径）代理              |
+| **Federation**         | 跨多个 K8s 集群统一管理，项目基本废弃，知道概念即可                                  |
+| **Prometheus**         | 集群监控（指标采集 + 告警 + Grafana 可视化），云原生监控标准                         |
+| **ELK / EFK**          | 集群日志统一收集、检索、分析平台                                              |
 
 ### 2.3 Node 深入：状态、心跳与节点管理
 
@@ -157,27 +158,27 @@ Node 是集群中的工作机器（物理机或虚拟机），是 Pod 实际运�
 
 **节点条件（Conditions）**：
 
-| 条件 | 含义 |
-|------|------|
-| Ready | 节点是否健康 |
-| MemoryPressure | 内存是否不足 |
-| DiskPressure | 磁盘空间是否不足 |
-| PIDPressure | 进程 ID 是否不足 |
-| NetworkUnavailable | 网络是否不可用 |
+| 条件                 | 含义         |
+| ------------------ | ---------- |
+| Ready              | 节点是否健康     |
+| MemoryPressure     | 内存是否不足     |
+| DiskPressure       | 磁盘空间是否不足   |
+| PIDPressure        | 进程 ID 是否不足 |
+| NetworkUnavailable | 网络是否不可用    |
 
 **心跳机制**：kubelet 每 10 秒更新状态 → Node Controller 每 5 秒检查 → **超 40 秒没心跳 → NotReady → 超 5 分钟 → 驱逐该节点上的 Pod**（重新调度到其他节点）。
 
 **节点管理命令**：
 
-| 操作 | 命令 |
-|------|------|
-| 查看节点 | `kubectl get nodes` |
-| 查看详情 | `kubectl describe node <name>` |
-| 标记不可调度 | `kubectl cordon <node>` |
-| 驱逐 Pod（维护前） | `kubectl drain <node>` |
-| 恢复调度 | `kubectl uncordon <node>` |
-| 打标签 | `kubectl label node <node> key=value` |
-| 打污点 | `kubectl taint node <node> key=value:NoSchedule` |
+| 操作          | 命令                                               |
+| ----------- | ------------------------------------------------ |
+| 查看节点        | `kubectl get nodes`                              |
+| 查看详情        | `kubectl describe node <name>`                   |
+| 标记不可调度      | `kubectl cordon <node>`                          |
+| 驱逐 Pod（维护前） | `kubectl drain <node>`                           |
+| 恢复调度        | `kubectl uncordon <node>`                        |
+| 打标签         | `kubectl label node <node> key=value`            |
+| 打污点         | `kubectl taint node <node> key=value:NoSchedule` |
 
 > **drain 流程**：cordon（先禁调度）→ 驱逐 Pod（遵守 PDB）→ 等优雅终止 → 人工确认后 uncordon。**维护节点前必做**，不然 Pod 强杀导致业务抖动。
 
@@ -191,11 +192,11 @@ kubeadm 是官方提供的集群引导工具：把「装一套 K8s」从手工�
 
 环境约定（三台机器示例）：
 
-| 机器 | 角色 | 假设 IP |
-|------|------|---------|
-| k8s-master | 主节点 | 172.31.0.4 |
-| k8s-node1 | 工作节点 | 172.31.0.5 |
-| k8s-node2 | 工作节点 | 172.31.0.6 |
+| 机器         | 角色   | 假设 IP      |
+| ---------- | ---- | ---------- |
+| k8s-master | 主节点  | 172.31.0.4 |
+| k8s-node1  | 工作节点 | 172.31.0.5 |
+| k8s-node2  | 工作节点 | 172.31.0.6 |
 
 > 以下以 CentOS/Alibaba Cloud Linux（yum 系）为主线，**Debian/Ubuntu（apt 系）的差异单独标注**——正好对应 A/B 两台机器的情况。
 
@@ -364,6 +365,43 @@ kubeadm token create --print-join-command
 
 > **注意**：node 上不需要 `.kube/config`，那是管理集群用的配置文件。node 的 kubelet 配置由 join 自动生成。
 
+### 3.3.1 部署 CNI 网络插件（Calico）
+
+节点 join 完还是 `NotReady`，因为**没装 CNI 网络插件**——K8s 本身不管 Pod 网络，靠 CNI 实现；Calico/Flannel/Cilium 都行，这里用 Calico（社区主流、支持 NetworkPolicy）。
+
+**calico.yaml 放哪**：它只是个清单文件，不用丢系统目录，在 **master**（已配 `~/.kube/config`）上 `kubectl apply -f` 跑即可。约定丢 `~/calico.yaml` 或 `manifests/` 目录便于版本管理。apply 后资源都在 `kube-system`（calico-node DaemonSet 每节点一个 + calico-kube-controllers）。
+
+```bash
+# 下载（k8s 1.33 用 v3.31.6；别用 docs.projectcalico.org/vX.X 这种会 404 成 HTML 的路径）
+curl -O https://raw.githubusercontent.com/projectcalico/calico/v3.31.6/manifests/calico.yaml
+head -5 calico.yaml            # 确认是 apiVersion 开头（700+ 行）再 apply
+kubectl apply -f calico.yaml
+kubectl get pods -n kube-system -w    # 等 calico-node / calico-kube-controllers 全 Running
+kubectl get nodes                     # NotReady → Ready
+```
+
+| 项 | 说明 |
+|----|------|
+| 默认 Pod CIDR | `192.168.0.0/16`；`kubeadm init` 没设 `--pod-network-cidr` 就保持默认，不用改 |
+| 版本匹配 | k8s v1.33.x → Calico **v3.31.6**（一个大版本覆盖连续 3 个 K8s minor） |
+| 安装方式 | 单文件 manifest 适合学习/showcase；生产也可走 Tigera Operator |
+
+**踩坑：apply 报 `invalid object to validate`**
+
+```text
+error: error validating "calico.yaml": error validating data: invalid object to validate;
+if you choose to ignore these errors, turn validation off with --validate=false
+```
+- **根因（最常见）**：`calico.yaml` 根本不是合法 YAML——curl 从 `docs.projectcalico.org/v3.30/manifests/...` 这类路径拿到的是 404/重定向的 **HTML 错误页**，kubectl 一解析就报「无效对象」。先 `head -5 calico.yaml` + `wc -l calico.yaml` 验：开头是 `<!DOCTYPE` / 行数才几十行 = 下载废了。
+- **修**：换 **raw github** 链接重下（上面那条），验过是 `apiVersion` 开头再 apply。
+- **次因**：文件确认是真 YAML（700+ 行）仍报错，那是 Calico CRD 的客户端校验 quirk（kubectl 默认校验认不出 CRD 类型），用 kubectl 自己提示的 `--validate=false` 绕开，对 Calico 安全：
+
+```bash
+kubectl apply -f calico.yaml --validate=false
+```
+
+> **排障顺序**：先 `head`/`wc` 验文件 → 是错误页就换 raw github 重下 → 真 YAML 仍报错才加 `--validate=false`。别一上来就 `--validate=false`，否则把垃圾文件也灌进集群。多网卡节点若 IP 自动探测到错网卡，可在 calico.yaml 里加 `IP_AUTODETECTION_METHOD: "interface=eth.*"` 指定网卡。装完 calico-node 全 Running，节点即从 `NotReady` → `Ready`，bootstrap 链路（§3.6）才算真正闭环。
+
 ### 3.4 验证集群
 
 ```bash
@@ -378,35 +416,38 @@ kubectl get pods -A     # -A = 所有命名空间，确认全部 Running
 
 **全部 Ready + 系统组件全 Running = 集群搭建完成。** 卡在 NotReady 排查网络组件安装/镜像拉取情况。
 
-### 3.5 部署 Dashboard
+### 3.5 部署 Dashboard（k8s 1.27+ 适配）
 
-#### ① 部署
+> **版本红线**：k8s **1.27 起官方只维护 Helm 安装**，单文件 `recommended.yaml` 路线废弃；
+>
+> k8s **1.33.x 对应 Dashboard v3.1.0+**（1.24 起进 v3.x 线）。老教程里的 `v2.3.1/recommended.yaml` 是给 ≤1.21 集群的，1.33 上即使 apply 成功 UI 也残废（metrics-scraper 依赖的旧 metrics API 已被移除，Metrics 页必失效）。非旧环境请一律用 Helm 装 v3.x。
 
-```bash
-kubectl apply -f https://raw.githubusercontent.com/kubernetes/dashboard/v2.3.1/recommended.yaml
-# 国内拉不动就 wget 下来，把镜像改成 aliyun 的再 apply
-```
-
-#### ② 设置访问端口
-
-默认 Service 是 ClusterIP，集群外访问不到，改成 NodePort：
+#### ① 部署（Helm，官方推荐）
 
 ```bash
-kubectl edit svc kubernetes-dashboard -n kubernetes-dashboard
-#   type: ClusterIP  →  type: NodePort
-
-kubectl get svc -n kubernetes-dashboard
-# NAME                   TYPE       CLUSTER-IP     PORT(S)         AGE
-# kubernetes-dashboard   NodePort   10.96.54.199   443:31245/TCP   1m
+helm repo add kubernetes-dashboard https://kubernetes.github.io/dashboard/
+helm repo update
+helm upgrade --install kubernetes-dashboard kubernetes-dashboard/kubernetes-dashboard \
+  --create-namespace --namespace kubernetes-dashboard
+# 没装 helm 见 §6.1（apt/brew 装 helm 即可）
 ```
 
-浏览器访问 `https://任意节点IP:31245`（自签证书，浏览器告警点继续即可）。
+#### ② 访问方式（port-forward，别开 NodePort 公网）
 
-#### ③ 创建访问账号
+v3 的对外 Service 叫 `kubernetes-dashboard-kong-proxy`（ClusterIP），本机代理访问：
 
-Dashboard 默认没有可登录的 admin 账号，创建一个绑定最高权限的 ServiceAccount：
+```bash
+kubectl -n kubernetes-dashboard port-forward svc/kubernetes-dashboard-kong-proxy 8443:443
+# 浏览器开 https://localhost:8443（自签证书，告警点继续）
+```
+
+> **莫套旧教程的 `kubectl edit svc kubernetes-dashboard ... type: NodePort`** —— v3 里 svc 名/结构已变，且 NodePort 裸暴露等于把 Dashboard 放公网（历史上有未授权访问大事故）。学习/showcase 用 port-forward 足够。
+
+#### ③ 创建登录账号（最小权限优先）
 
 ```yaml
+# dash-account.yaml —— 学习/showcase 图省事绑 cluster-admin；
+# 生产应绑只读 Role（如官方 ClusterRole view）而非 cluster-admin
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -420,7 +461,7 @@ metadata:
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: cluster-admin        # 直接绑集群管理员角色
+  name: cluster-admin
 subjects:
 - kind: ServiceAccount
   name: admin-user
@@ -431,22 +472,18 @@ subjects:
 kubectl apply -f dash-account.yaml
 ```
 
-#### ④ 令牌访问
+#### ④ 令牌访问（1.24+ 直接签发）
 
 ```bash
-# 1.24 之前的版本：直接从 Secret 里解出 token
-kubectl -n kubernetes-dashboard get secret \
-  $(kubectl -n kubernetes-dashboard get secret | grep admin-user | awk '{print $1}') \
-  -o go-template="{{.data.token | base64decode}}"
+kubectl -n kubernetes-dashboard create token admin-user
+# 复制输出的 token 贴到登录页
 ```
 
-> **值得注意的是**：1.24 起 ServiceAccount 不再自动创建带 token 的 Secret，上面这条命令会查不到东西。新版本用 `kubectl -n kubernetes-dashboard create token admin-user` 直接签发 token，或者自己建一个 `type: kubernetes.io/service-account-token` 的 Secret。
+> **1.24 起 SA 不再自动建带 token 的 Secret**，老教程的 `kubectl get secret ... -o go-template` 解 token 会查空。直接用 `create token` 签发；token 默认 1h 过期，长跑/定时加 `--duration=8760h`。
 
-复制 token 贴到登录页 → 进入界面。
+#### ⑤ 界面与安全
 
-#### ⑤ 界面
-
-左侧菜单：Overview（集群概览）、Nodes / Workloads（Pod、Deployment 等负载）、Config Maps / Secrets、Services。**可视化看资源、快速排障可以，日常操作还是 kubectl 为主**——生产环境 Dashboard 一般不开公网暴露，历史上出过未授权访问的大事故，请大家不要把家门对外开放。
+左侧菜单：Overview / Nodes / Workloads / Config / Services。**可视化看资源、快速排障可以，日常操作还是 kubectl 为主**——Dashboard 一律走 port-forward 或带鉴权的 Ingress，**不要 NodePort 裸暴露公网**。
 
 ### 3.6 小结
 
@@ -466,10 +503,10 @@ kubectl -n kubernetes-dashboard get secret \
 
 两种路子，对应两种哲学：
 
-| 方式 | 命令 | 特点 |
-|------|------|------|
-| **命令式** | `kubectl run nginx --image=nginx` | 适合临时验证；但复杂参数写不动，也没法版本管理 |
-| **声明式（yaml）** | `kubectl apply -f xxx.yaml` | 一切皆资源，yaml 可以进 git、可以复用、可以 review；**生产唯一正道** |
+| 方式            | 命令                                | 特点                                           |
+| ------------- | --------------------------------- | -------------------------------------------- |
+| **命令式**       | `kubectl run nginx --image=nginx` | 适合临时验证；但复杂参数写不动，也没法版本管理                      |
+| **声明式（yaml）** | `kubectl apply -f xxx.yaml`       | 一切皆资源，yaml 可以进 git、可以复用、可以 review；**生产唯一正道** |
 
 命令式感受一下就够，不推荐大家常用：
 
@@ -489,11 +526,11 @@ kubectl delete pod mynginx
 
 三种数据结构（所有清单都是这三种的组合）：
 
-| 结构 | 语法 | 在清单里长什么样 |
-|------|------|----------------|
+| 结构         | 语法               | 在清单里长什么样                             |
+| ---------- | ---------------- | ------------------------------------ |
 | **对象**（映射） | key: value，靠缩进嵌套 | apiVersion/kind/metadata/spec 本身都是对象 |
-| **数组**（列表） | 每项一个 `- ` | `spec.containers` 下一个 `-` 一个容器 |
-| **纯量** | 字符串/数字/布尔/null | `image: nginx`、`replicas: 3` |
+| **数组**（列表） | 每项一个 `- `        | `spec.containers` 下一个 `-` 一个容器       |
+| **纯量**     | 字符串/数字/布尔/null   | `image: nginx`、`replicas: 3`         |
 
 ```yaml
 # 纯量
@@ -523,7 +560,7 @@ containers:
 
 > **值得一提的是**：新手报错 Top 2 就是 `key:value` 少了空格、tab 混入缩进。写完先本地干跑验证，不碰集群：`kubectl apply --dry-run=client -f xxx.yaml -o yaml`，格式错立刻报。
 
-声明式的核心问题：**yaml 字段这么多，怎么知道写什么？** 
+声明式的核心问题：**yaml 字段这么多，怎么知道写什么？**
 
 答案不是查文档，是善用explain命令（没英语功底的话还是乖乖问AI吧）：
 
@@ -542,12 +579,12 @@ kubectl explain pod.spec.containers.ports
 
 集群自带 4 个：
 
-| Namespace | 存放 |
-|-----------|------|
-| default | 不指定 ns 时资源默认落这 |
-| kube-system | 系统组件（Calico、CoreDNS……） |
-| kube-public | 公开资源，几乎不用 |
-| kube-node-lease | 节点心跳租约 |
+| Namespace       | 存放                     |
+| --------------- | ---------------------- |
+| default         | 不指定 ns 时资源默认落这         |
+| kube-system     | 系统组件（Calico、CoreDNS……） |
+| kube-public     | 公开资源，几乎不用              |
+| kube-node-lease | 节点心跳租约                 |
 
 ```bash
 kubectl get ns                  # 列出所有命名空间
@@ -670,11 +707,11 @@ sidecar 往 `/data` 写文件，nginx 的 `/usr/share/nginx/html` 立刻可见�
 
 **QoS 三档**（决定节点资源紧张时谁先被驱逐）：
 
-| QoS | 条件 | 被驱逐优先级 |
-|-----|------|--------------|
-| Guaranteed | 所有容器 limits = requests | 最低（最安全） |
-| Burstable | 部分设置 requests/limits | 中 |
-| BestEffort | 全没设置 | **最高（先赶走）** |
+| QoS        | 条件                     | 被驱逐优先级      |
+| ---------- | ---------------------- | ----------- |
+| Guaranteed | 所有容器 limits = requests | 最低（最安全）     |
+| Burstable  | 部分设置 requests/limits   | 中           |
+| BestEffort | 全没设置                   | **最高（先赶走）** |
 
 > 结论：**生产 Pod 必定写 requests/limits**，否则就是节点一紧张第一个被牺牲的。
 
@@ -715,23 +752,23 @@ Succeeded / Failed（终态）；Unknown = 节点失联，状态未知
 
 Phase 是 Pod 级别的粗粒度状态，只有 5 种：
 
-| Phase | 含义 | 典型场景 |
-|-------|------|---------|
-| **Pending** | 已创建，但容器没全跑起来 | 等调度、拉镜像、等 PV 绑定 |
-| **Running** | 已绑定节点，容器已创建且至少一个在运行 | 正常服役中（含正在重启/重启中） |
-| **Succeeded** | 所有容器成功终止且不会重启 | Job/CronJob 跑完（restartPolicy: Never/OnFailure） |
-| **Failed** | 所有容器终止且至少一个失败 | 退出码非 0、被系统杀掉 |
-| **Unknown** | 状态未知 | 节点失联（心跳超时） |
+| Phase         | 含义                  | 典型场景                                           |
+| ------------- | ------------------- | ---------------------------------------------- |
+| **Pending**   | 已创建，但容器没全跑起来        | 等调度、拉镜像、等 PV 绑定                                |
+| **Running**   | 已绑定节点，容器已创建且至少一个在运行 | 正常服役中（含正在重启/重启中）                               |
+| **Succeeded** | 所有容器成功终止且不会重启       | Job/CronJob 跑完（restartPolicy: Never/OnFailure） |
+| **Failed**    | 所有容器终止且至少一个失败       | 退出码非 0、被系统杀掉                                   |
+| **Unknown**   | 状态未知                | 节点失联（心跳超时）                                     |
 
 > **辨析**：`Running` ≠ 「能接流量」。Running 只表示容器进程在跑，能不能接流量由 readinessProbe 决定，健不健康由 livenessProbe 决定。`kubectl get pod` 看到一堆 Running 但服务不通，先看 `READY` 列是不是 `1/1`——`0/1` 就是没过就绪探针。
 
 phase 太粗糙，排障时更常用**容器级三态**（`kubectl describe pod` 的 State 字段）：
 
-| 容器状态 | 含义 | 常见原因 |
-|---------|------|---------|
-| Waiting | 等待启动 | 拉镜像中、CrashLoopBackOff、等 ConfigMap/Secret |
-| Running | 正在运行 | 正常 |
-| Terminated | 已终止 | 退出码、结束原因（OOMKilled / Error / Completed）都在这看 |
+| 容器状态       | 含义   | 常见原因                                        |
+| ---------- | ---- | ------------------------------------------- |
+| Waiting    | 等待启动 | 拉镜像中、CrashLoopBackOff、等 ConfigMap/Secret    |
+| Running    | 正在运行 | 正常                                          |
+| Terminated | 已终止  | 退出码、结束原因（OOMKilled / Error / Completed）都在这看 |
 
 > **CrashLoopBackOff**：容器反复崩溃反复重启的退避状态，重启间隔指数拉长（10s → 20s → 40s … 上限 5min）。九成是应用拉起失败1（配置错、依赖连不上、探针配太激进把健康进程杀成循环崩溃），用 `kubectl logs --previous` 看上一次崩溃的日志。
 
@@ -779,21 +816,21 @@ spec:
 
 **三种探针**（管的事完全不同，记死）：
 
-| 探针 | 检测失败后的动作 | 本质问题 |
-|------|----------------|---------|
-| **livenessProbe** 存活检测 | **重启容器** | 进程还活着吗？（死锁、卡死但进程还在） |
-| **readinessProbe** 就绪检测 | **从 Service 端点摘除**，不重启 | 能接流量了吗？（启动中、依赖断了、过载降级） |
-| **startupProbe** 启动检测 | 通过前**屏蔽 liveness/readiness**，超时则重启容器 | 慢启动应用要多久才就绪？（大 JVM、老系统） |
+| 探针                      | 检测失败后的动作                             | 本质问题                    |
+| ----------------------- | ------------------------------------ | ----------------------- |
+| **livenessProbe** 存活检测  | **重启容器**                             | 进程还活着吗？（死锁、卡死但进程还在）     |
+| **readinessProbe** 就绪检测 | **从 Service 端点摘除**，不重启               | 能接流量了吗？（启动中、依赖断了、过载降级）  |
+| **startupProbe** 启动检测   | 通过前**屏蔽 liveness/readiness**，超时则重启容器 | 慢启动应用要多久才就绪？（大 JVM、老系统） |
 
 > startupProbe 是给慢启动应用兜底的：以前只能把 liveness 的 initialDelaySeconds 调得很大，但那样真崩溃也要等很久才发现；有了 startupProbe，`failureThreshold: 30 × periodSeconds: 10` = 允许慢跑 5 分钟，一旦判定启动完成，liveness 立刻用短周期接管。
 
 **三种检测方式**（每种探针任选一种）：
 
-| 方式 | 原理 | 适用 |
-|------|------|------|
-| **httpGet** | 对容器 IP 发 HTTP GET，2xx/3xx 算成功 | 有 HTTP 服务的（最常用） |
-| **tcpSocket** | 对指定端口建 TCP 连接，通了算成功 | 没有健康接口、只开端口的（数据库类） |
-| **exec** | 在容器里执行命令，退出码 0 算成功 | 需要脚本判断的复杂逻辑 |
+| 方式            | 原理                            | 适用                 |
+| ------------- | ----------------------------- | ------------------ |
+| **httpGet**   | 对容器 IP 发 HTTP GET，2xx/3xx 算成功 | 有 HTTP 服务的（最常用）    |
+| **tcpSocket** | 对指定端口建 TCP 连接，通了算成功           | 没有健康接口、只开端口的（数据库类） |
+| **exec**      | 在容器里执行命令，退出码 0 算成功            | 需要脚本判断的复杂逻辑        |
 
 三合一完整示例：
 
@@ -825,13 +862,13 @@ containers:
 
 **通用调优参数**（三种探针都支持）：
 
-| 参数 | 默认 | 说明 |
-|------|------|------|
-| initialDelaySeconds | 0 | 容器启动后等多久开始第一次探测 |
-| periodSeconds | 10 | 探测周期 |
-| timeoutSeconds | 1 | 单次探测超时（应用响应慢要调大，否则误判失败） |
-| successThreshold | 1 | 连续成功几次算通过（readiness 摘除后恢复流量用它防抖） |
-| failureThreshold | 3 | 连续失败几次判定失败 |
+| 参数                  | 默认 | 说明                               |
+| ------------------- | -- | -------------------------------- |
+| initialDelaySeconds | 0  | 容器启动后等多久开始第一次探测                  |
+| periodSeconds       | 10 | 探测周期                             |
+| timeoutSeconds      | 1  | 单次探测超时（应用响应慢要调大，否则误判失败）          |
+| successThreshold    | 1  | 连续成功几次算通过（readiness 摘除后恢复流量用它防抖） |
+| failureThreshold    | 3  | 连续失败几次判定失败                       |
 
 > **值得注意的是**：liveness 探针指向一个「要查数据库」的接口是经典事故——数据库抖 30 秒，探针把所有 Pod 重启一遍，故障被放大成雪崩。什么人干什么事，**liveness 只测进程自身健康**；依赖健康度交给 readiness（摘流量就够了，重启解决不了依赖问题）。
 
@@ -839,10 +876,10 @@ containers:
 
 `lifecycle` 字段里的两个钩子，在容器启动/终止时插入自定义动作：
 
-| 钩子 | 时机 | 同步性 |
-|------|------|--------|
-| **postStart** | 容器创建后立刻触发 | **异步**——和 ENTRYPOINT 并发执行，不保证先后顺序 |
-| **preStop** | 收到终止信号**前**触发 | **同步阻塞**——执行完才发 SIGTERM |
+| 钩子            | 时机            | 同步性                               |
+| ------------- | ------------- | --------------------------------- |
+| **postStart** | 容器创建后立刻触发     | **异步**——和 ENTRYPOINT 并发执行，不保证先后顺序 |
+| **preStop**   | 收到终止信号**前**触发 | **同步阻塞**——执行完才发 SIGTERM           |
 
 ```yaml
 containers:
@@ -993,11 +1030,8 @@ kubectl rollout resume deployment/my-dep
 ### Deployment 小结
 
 > **一句话**：Deployment = 副本管理（ReplicaSet）+ 版本管理（滚动更新/回滚）双层封装，无状态应用的默认选择。
+>   
 > 有状态（数据库类 DBMS）别硬 Deployment，使用和性能有相当的困难，进阶专题的 StatefulSet 再聊。
-
-
-
-
 
 ## 5. Service
 
@@ -1083,12 +1117,12 @@ curl 172.31.0.5:31000    # node1 —— 任意节点都行，kube-proxy 把流�
 
 ### 5.3 LoadBalancer 与 ExternalName（四件套）
 
-| type | 原理 | 适用 |
-|------|------|------|
-| ClusterIP | 集群内虚拟 IP | 默认，集群内部互访 |
-| NodePort | 每节点开 30000-32767 真实端口 | 测试 / 没有负载均衡器的自建环境 |
-| **LoadBalancer** | 云厂商 LB → 回源仍是 NodePort 那套 | **云上暴露服务标配** |
-| **ExternalName** | 返回 DNS CNAME，不做任何转发 | 集群内引用外部服务 |
+| type             | 原理                        | 适用                |
+| ---------------- | ------------------------- | ----------------- |
+| ClusterIP        | 集群内虚拟 IP                  | 默认，集群内部互访         |
+| NodePort         | 每节点开 30000-32767 真实端口     | 测试 / 没有负载均衡器的自建环境 |
+| **LoadBalancer** | 云厂商 LB → 回源仍是 NodePort 那套 | **云上暴露服务标配**      |
+| **ExternalName** | 返回 DNS CNAME，不做任何转发       | 集群内引用外部服务         |
 
 ```yaml
 # LoadBalancer：云环境一条 yaml 就有公网入口
@@ -1117,10 +1151,10 @@ spec:
 
 Service 能通全靠每个节点的 kube-proxy 写转发规则（组件职责见 2.2.2），两种模式：
 
-| 模式 | 原理 | 规模化表现 |
-|------|------|-----------|
-| **iptables**（默认） | 每条 Service 一串 iptables 规则，顺序匹配 | 规则上千后整表刷新变慢、转发有延迟 |
-| **ipvs** | 内核哈希表 + 多种负载算法（rr/lc/sed…） | 大规模平滑，Service 多时首选 |
+| 模式               | 原理                             | 规模化表现              |
+| ---------------- | ------------------------------ | ------------------ |
+| **iptables**（默认） | 每条 Service 一串 iptables 规则，顺序匹配 | 规则上千后整表刷新变慢、转发有延迟  |
+| **ipvs**         | 内核哈希表 + 多种负载算法（rr/lc/sed…）     | 大规模平滑，Service 多时首选 |
 
 ```bash
 # 切 ipvs：改 kube-proxy 的 ConfigMap
@@ -1264,11 +1298,11 @@ K8s 的解法是把「存储的提供」和「存储的使用」拆开：
 Pod：像用普通 volume 一样用 PVC，不关心背后是什么存储
 ```
 
-| 概念 | 角色 | 类比 |
-|------|------|------|
-| **PV**（PersistentVolume） | 存储本身，集群级资源，运维创建 | 机房里的硬盘 |
-| **PVC**（PersistentVolumeClaim） | 存储申请单，用户创建 | 「给我一块 5M 的盘」工单 |
-| **StorageClass** | 动态供给，PVC 申请时自动造 PV | 自动化工单系统 |
+| 概念                             | 角色                 | 类比             |
+| ------------------------------ | ------------------ | -------------- |
+| **PV**（PersistentVolume）       | 存储本身，集群级资源，运维创建    | 机房里的硬盘         |
+| **PVC**（PersistentVolumeClaim） | 存储申请单，用户创建         | 「给我一块 5M 的盘」工单 |
+| **StorageClass**               | 动态供给，PVC 申请时自动造 PV | 自动化工单系统        |
 
 ### 7.2 环境准备（NFS 服务器）
 
@@ -1327,13 +1361,13 @@ spec:
 
 先补一张 **volume 卷类型速查表**（本文前后用到的全在这，选型依照具体需求）：
 
-| 卷类型 | 数据生命周期 | 典型用途 |
-|--------|-------------|---------|
-| **emptyDir** | 随 Pod 销毁 | 临时空间、多容器共享目录（3.3 示例） |
-| **hostPath** | 节点上的目录 | 节点级 agent（日志/监控 DaemonSet）；绑死节点，业务别用 |
-| **nfs** | 节点之外 | 直接挂 NFS 共享目录（7.3 示例，写死存储细节） |
-| **configMap / secret** | 随 ConfigMap/Secret | 配置文件 / 敏感数据注入容器（7.5 / 7.6） |
-| **persistentVolumeClaim** | 跟 PV 走 | 走 PV/PVC 抽象层（本节，**生产正道**） |
+| 卷类型                       | 数据生命周期             | 典型用途                                 |
+| ------------------------- | ------------------ | ------------------------------------ |
+| **emptyDir**              | 随 Pod 销毁           | 临时空间、多容器共享目录（3.3 示例）                 |
+| **hostPath**              | 节点上的目录             | 节点级 agent（日志/监控 DaemonSet）；绑死节点，业务别用 |
+| **nfs**                   | 节点之外               | 直接挂 NFS 共享目录（7.3 示例，写死存储细节）          |
+| **configMap / secret**    | 随 ConfigMap/Secret | 配置文件 / 敏感数据注入容器（7.5 / 7.6）           |
+| **persistentVolumeClaim** | 跟 PV 走             | 走 PV/PVC 抽象层（本节，**生产正道**）            |
 
 > 选型：**临时用 emptyDir → 配置用 configMap/secret → 数据要活过 Pod 就走 PVC**；hostPath 只留给节点级守护进程。
 
@@ -1435,11 +1469,11 @@ spec:
 
 apply 后 PVC 直接 Bound，PV 凭空出现（reclaimPolicy 跟着 SC 定义走，默认 Delete）。
 
-| 对比 | 静态供给 | 动态供给（SC） |
-|------|---------|---------------|
-| 谁造 PV | 运维手动建池 | provisioner 自动 |
-| 容量 | 错配浪费 | 按需精确 |
-| 换后端（NFS→Ceph） | 重造整个 PV 池 | 换个 SC 名即可 |
+| 对比            | 静态供给      | 动态供给（SC）       |
+| ------------- | --------- | -------------- |
+| 谁造 PV         | 运维手动建池    | provisioner 自动 |
+| 容量            | 错配浪费      | 按需精确           |
+| 换后端（NFS→Ceph） | 重造整个 PV 池 | 换个 SC 名即可      |
 
 > StatefulSet 的 `volumeClaimTemplates` + SC = 「每个 Pod 一块自动创建的盘」（进阶专题 3.2.2 那套机制的生产形态）。云上集群（ACK/TKE/EKS）更简单：SC 是现成的，PVC 一提交云盘自动挂上。
 
@@ -1579,24 +1613,24 @@ volumes:
 
 **Secret 的 `type` 字段**（决定 apiserver 怎么校验内容）：
 
-| type | 用途 | data / stringData 里的 key |
-|------|------|---------------------------|
-| **Opaque** | 默认通用类型，任意键值对 | 自定义 |
-| `kubernetes.io/service-account-token` | SA 的长期 token（1.24 前随 SA 自动生成） | `token`、`ca.crt`、`namespace` |
-| `kubernetes.io/dockerconfigjson` | 私有镜像仓库凭据，配 Pod 的 `imagePullSecrets` | `.dockerconfigjson` |
-| `kubernetes.io/tls` | TLS 证书，Ingress 配 HTTPS 时引用 | `tls.crt`、`tls.key` |
-| `kubernetes.io/basic-auth` / `ssh-auth` | HTTP Basic 认证、SSH 私钥 | `username`+`password` / `ssh-privatekey` |
+| type                                    | 用途                                  | data / stringData 里的 key                 |
+| --------------------------------------- | ----------------------------------- | ---------------------------------------- |
+| **Opaque**                              | 默认通用类型，任意键值对                        | 自定义                                      |
+| `kubernetes.io/service-account-token`   | SA 的长期 token（1.24 前随 SA 自动生成）       | `token`、`ca.crt`、`namespace`             |
+| `kubernetes.io/dockerconfigjson`        | 私有镜像仓库凭据，配 Pod 的 `imagePullSecrets` | `.dockerconfigjson`                      |
+| `kubernetes.io/tls`                     | TLS 证书，Ingress 配 HTTPS 时引用          | `tls.crt`、`tls.key`                      |
+| `kubernetes.io/basic-auth` / `ssh-auth` | HTTP Basic 认证、SSH 私钥                | `username`+`password` / `ssh-privatekey` |
 
 > `service-account-token` 这一行就是 RBAC 里 ServiceAccount 的身份载体（进阶专题 5.1）；`dockerconfigjson` 是「镜像拉不下来」第二常见的根因（9.3 症状表）。
 
 ### ConfigMap vs Secret
 
-| 项目 | ConfigMap | Secret |
-|------|-----------|--------|
-| 存什么 | 普通配置（nginx.conf、yml） | 敏感数据（密码、token、证书） |
-| 值的格式 | 明文 | base64 |
-| 热更新 | 支持（subPath 除外） | 挂载方式支持，env 方式不支持 |
-| 落盘 | etcd + 可挂载 | etcd（可配置加密）+ tmpfs 挂载 |
+| 项目   | ConfigMap            | Secret                |
+| ---- | -------------------- | --------------------- |
+| 存什么  | 普通配置（nginx.conf、yml） | 敏感数据（密码、token、证书）     |
+| 值的格式 | 明文                   | base64                |
+| 热更新  | 支持（subPath 除外）       | 挂载方式支持，env 方式不支持      |
+| 落盘   | etcd + 可挂载           | etcd（可配置加密）+ tmpfs 挂载 |
 
 ### 存储小结
 
@@ -1635,12 +1669,12 @@ Pod 落到哪个节点，是 **kube-scheduler** 说了算（组件职责见 2.2.
 
 ### 8.2 四种调度约束（从粗到细）
 
-| 方式 | 写在哪 | 一句话 |
-|------|--------|--------|
-| **nodeName** | Pod | 直接指名道姓，跳过 scheduler |
-| **nodeSelector** | Pod | 按节点标签挑，最简单够用 |
-| **亲和性**（node/pod Affinity） | Pod | nodeSelector 超集，软硬两档，能表达「优先」 |
-| **污点 + 容忍**（taint / toleration） | 节点出题、Pod 答题 | 反向逻辑：节点拒绝大部分 Pod，带通行证才能上 |
+| 方式                              | 写在哪         | 一句话                          |
+| ------------------------------- | ----------- | ---------------------------- |
+| **nodeName**                    | Pod         | 直接指名道姓，跳过 scheduler          |
+| **nodeSelector**                | Pod         | 按节点标签挑，最简单够用                 |
+| **亲和性**（node/pod Affinity）      | Pod         | nodeSelector 超集，软硬两档，能表达「优先」 |
+| **污点 + 容忍**（taint / toleration） | 节点出题、Pod 答题 | 反向逻辑：节点拒绝大部分 Pod，带通行证才能上     |
 
 #### ① 指定调度节点：nodeName / nodeSelector
 
@@ -1661,10 +1695,10 @@ kubectl label node k8s-node1 disktype=ssd    # nodeSelector 的前提：先给�
 
 亲和性分两个维度：**nodeAffinity**（和节点的关系，看节点标签）、**podAffinity/podAntiAffinity**（和其他 Pod 的关系，看 Pod 标签）。两个维度都分软硬两档：
 
-| 档位 | 字段（长得吓人，拆开记） | 语义 |
-|------|--------------------------|------|
-| **硬亲和** | requiredDuringSchedulingIgnoredDuringExecution | 必须——不满足就 Pending，宁缺毋滥 |
-| **软亲和** | preferredDuringSchedulingIgnoredDuringExecution | 优先——满足加分，不满足照样调度 |
+| 档位      | 字段（长得吓人，拆开记）                                    | 语义                    |
+| ------- | ----------------------------------------------- | --------------------- |
+| **硬亲和** | requiredDuringSchedulingIgnoredDuringExecution  | 必须——不满足就 Pending，宁缺毋滥 |
+| **软亲和** | preferredDuringSchedulingIgnoredDuringExecution | 优先——满足加分，不满足照样调度      |
 
 > 那个长后缀 **IgnoredDuringExecution** 的含义：**约束只在调度那一刻生效**——Pod 跑起来后节点标签变了、邻居 Pod 挪走了，K8s 不会为维持亲和关系驱逐已运行的 Pod。
 
@@ -1697,11 +1731,11 @@ affinity:
 
 三种 effect：
 
-| effect | 行为 |
-|--------|------|
-| **NoSchedule** | 不容忍就不调度（已在跑的不动） |
-| **PreferNoSchedule** | 尽量不调度，实在没得选也行（软性） |
-| **NoExecute** | 不容忍不但不调度，**已运行的直接驱逐** |
+| effect               | 行为                    |
+| -------------------- | --------------------- |
+| **NoSchedule**       | 不容忍就不调度（已在跑的不动）       |
+| **PreferNoSchedule** | 尽量不调度，实在没得选也行（软性）     |
+| **NoExecute**        | 不容忍不但不调度，**已运行的直接驱逐** |
 
 ```bash
 # 运维排障：打 NoExecute 污点，把节点上需要操作的 Pod 全部逐出
@@ -1741,17 +1775,17 @@ tolerations:
 
 ### 9.1 高频命令总表
 
-| 类别 | 命令 | 说明 |
-|------|------|------|
-| 看状态 | `kubectl get pods -o wide` | 带 IP / 落点节点；先看 READY 列 |
-| 看详情 | `kubectl describe pod <name>` | **Events 是灵魂**：调度失败、镜像拉取、探针失败全在这 |
-| 看日志 | `kubectl logs <name> [-f] [--previous]` | `--previous` 看上一次崩溃的日志（CrashLoop 必用） |
-| 进容器 | `kubectl exec -it <name> -- /bin/sh` | 到现场排查 |
-| 拷文件 | `kubectl cp <pod>:/path ./local` | 把日志/配置拉出来分析 |
-| 临时端口 | `kubectl port-forward pod/<name> 8080:80` | 本机直连调试，不动 Service |
-| 看资源占用 | `kubectl top pods / nodes` | 需先装 Metrics Server（HPA 同款依赖） |
-| 看集群事件 | `kubectl get events --sort-by=.lastTimestamp` | 集群级时间线，比挨个 describe 快 |
-| 临时工具 Pod | `kubectl run tmp --rm -it --image=busybox --restart=Never -- sh` | 测网络连通 / DNS 解析的利器，退出自动删 |
+| 类别       | 命令                                                               | 说明                                   |
+| -------- | ---------------------------------------------------------------- | ------------------------------------ |
+| 看状态      | `kubectl get pods -o wide`                                       | 带 IP / 落点节点；先看 READY 列               |
+| 看详情      | `kubectl describe pod <name>`                                    | **Events 是灵魂**：调度失败、镜像拉取、探针失败全在这     |
+| 看日志      | `kubectl logs <name> [-f] [--previous]`                          | `--previous` 看上一次崩溃的日志（CrashLoop 必用） |
+| 进容器      | `kubectl exec -it <name> -- /bin/sh`                             | 到现场排查                                |
+| 拷文件      | `kubectl cp <pod>:/path ./local`                                 | 把日志/配置拉出来分析                          |
+| 临时端口     | `kubectl port-forward pod/<name> 8080:80`                        | 本机直连调试，不动 Service                    |
+| 看资源占用    | `kubectl top pods / nodes`                                       | 需先装 Metrics Server（HPA 同款依赖）         |
+| 看集群事件    | `kubectl get events --sort-by=.lastTimestamp`                    | 集群级时间线，比挨个 describe 快                |
+| 临时工具 Pod | `kubectl run tmp --rm -it --image=busybox --restart=Never -- sh` | 测网络连通 / DNS 解析的利器，退出自动删              |
 
 ### 9.2 排障（固定顺序）
 
@@ -1765,15 +1799,15 @@ tolerations:
 
 ### 9.3 症状速查表
 
-| STATUS | 含义 | 第一反应 |
-|--------|------|---------|
-| Pending | 没调度上 / 等 PV 绑定 | describe 看 FailedScheduling 三类原因（见二.8） |
-| ImagePullBackOff / ErrImagePull | 镜像拉不下来 | 镜像名拼错 / 私有仓库没配 imagePullSecrets |
-| CrashLoopBackOff | 反复崩溃反复重启 | `logs --previous`；查配置错 / 依赖连不上 / 探针过激 |
-| OOMKilled（exit 137） | 内存超 limits 被内核杀 | 调大 limits.memory 或查内存泄漏 |
-| Evicted | 被节点驱逐 | 节点资源紧张，对照 QoS（见 3.4）和节点压力 |
-| Completed | 正常跑完退出 | Job 类的正常终态，不是故障 |
-| Running 但 0/1 Ready | 没过就绪探针 | readiness 配置 / 应用启动慢（上 startupProbe） |
+| STATUS                          | 含义              | 第一反应                                   |
+| ------------------------------- | --------------- | -------------------------------------- |
+| Pending                         | 没调度上 / 等 PV 绑定  | describe 看 FailedScheduling 三类原因（见二.8） |
+| ImagePullBackOff / ErrImagePull | 镜像拉不下来          | 镜像名拼错 / 私有仓库没配 imagePullSecrets        |
+| CrashLoopBackOff                | 反复崩溃反复重启        | `logs --previous`；查配置错 / 依赖连不上 / 探针过激  |
+| OOMKilled（exit 137）             | 内存超 limits 被内核杀 | 调大 limits.memory 或查内存泄漏                |
+| Evicted                         | 被节点驱逐           | 节点资源紧张，对照 QoS（见 3.4）和节点压力              |
+| Completed                       | 正常跑完退出          | Job 类的正常终态，不是故障                        |
+| Running 但 0/1 Ready             | 没过就绪探针          | readiness 配置 / 应用启动慢（上 startupProbe）   |
 
 ## 10. 资源治理：配额与驱逐保护
 
@@ -1882,11 +1916,11 @@ HPA 控制器运行在 `kube-controller-manager` 中，遵循标准控制循环�
 
 ### 1.3 指标来源
 
-| 类型       | API 来源                  | 提供者                | 用途                         |
-| :--------- | :------------------------ | :-------------------- | :--------------------------- |
-| 资源指标   | `metrics.k8s.io`          | Metrics Server        | CPU、内存使用率              |
-| 自定义指标 | `custom.metrics.k8s.io`   | Prometheus Adapter 等 | QPS、延迟、连接数等业务指标  |
-| 外部指标   | `external.metrics.k8s.io` | 云服务商适配器        | 消息队列长度、数据库连接数等 |
+| 类型    | API 来源                    | 提供者                  | 用途              |
+| :---- | :------------------------ | :------------------- | :-------------- |
+| 资源指标  | `metrics.k8s.io`          | Metrics Server       | CPU、内存使用率       |
+| 自定义指标 | `custom.metrics.k8s.io`   | Prometheus Adapter 等 | QPS、延迟、连接数等业务指标 |
+| 外部指标  | `external.metrics.k8s.io` | 云服务商适配器              | 消息队列长度、数据库连接数等  |
 
 ### 1.4 稳定性机制（防止抖动）
 
@@ -1951,14 +1985,14 @@ StatefulSet 专为有状态应用设计，为每个 Pod 提供稳定、唯一的
 
 ### 3.1 核心对比：StatefulSet vs Deployment
 
-| 维度     | Deployment       | StatefulSet                            |
-| :------- | :--------------- | :------------------------------------- |
-| 适用场景 | 无状态应用       | 有状态应用（MySQL、Kafka、etcd）       |
-| Pod 身份 | 随机名称和 IP    | 固定名称（`web-0`、`web-1`）和稳定 DNS |
-| 存储     | 共享 PVC 模板    | 每个 Pod 独立 PVC，Pod 重建后存储跟随  |
-| 扩缩容   | 并行创建/删除    | 按序号串行（0→1→2 或逆序）             |
-| 服务发现 | Service 负载均衡 | Headless Service，每个 Pod 独立 DNS    |
-| 更新策略 | 并行滚动更新     | 支持分区更新，控制更新节奏             |
+| 维度     | Deployment   | StatefulSet                    |
+| :----- | :----------- | :----------------------------- |
+| 适用场景   | 无状态应用        | 有状态应用（MySQL、Kafka、etcd）        |
+| Pod 身份 | 随机名称和 IP     | 固定名称（`web-0`、`web-1`）和稳定 DNS   |
+| 存储     | 共享 PVC 模板    | 每个 Pod 独立 PVC，Pod 重建后存储跟随      |
+| 扩缩容    | 并行创建/删除      | 按序号串行（0→1→2 或逆序）               |
+| 服务发现   | Service 负载均衡 | Headless Service，每个 Pod 独立 DNS |
+| 更新策略   | 并行滚动更新       | 支持分区更新，控制更新节奏                  |
 
 **选择原则**：能用 Deployment 解决的，不要用 StatefulSet。
 
@@ -2044,7 +2078,7 @@ spec:
 
 **部署后结构**：
 
-| Pod 名称  | DNS 域名                                  | PVC 名称             |
+| Pod 名称    | DNS 域名                                    | PVC 名称               |
 | :-------- | :---------------------------------------- | :------------------- |
 | `mysql-0` | `mysql-0.mysql.default.svc.cluster.local` | `mysql-data-mysql-0` |
 | `mysql-1` | `mysql-1.mysql.default.svc.cluster.local` | `mysql-data-mysql-1` |
@@ -2070,14 +2104,14 @@ spec:
 
 #### 4.1.2 典型使用场景
 
-| 场景         | 示例                                    |
-| :----------- | :-------------------------------------- |
-| 日志收集     | Fluentd、Filebeat、Logstash             |
-| 节点监控     | Prometheus Node Exporter、Datadog Agent |
-| 网络插件     | Calico、Flannel、Cilium、kube-proxy     |
+| 场景     | 示例                                     |
+| :----- | :------------------------------------- |
+| 日志收集   | Fluentd、Filebeat、Logstash              |
+| 节点监控   | Prometheus Node Exporter、Datadog Agent |
+| 网络插件   | Calico、Flannel、Cilium、kube-proxy       |
 | 存储守护进程 | Ceph OSD、GlusterFS                     |
-| 安全代理     | Falco、Aqua Security                    |
-| 节点配置管理 | 自动调整内核参数、挂载设备              |
+| 安全代理   | Falco、Aqua Security                    |
+| 节点配置管理 | 自动调整内核参数、挂载设备                          |
 
 #### 4.1.3 核心工作机制
 
@@ -2178,14 +2212,14 @@ kubectl get jobs
 
 #### 4.3.2 典型使用场景
 
-| 场景       | 示例                    |
-| :--------- | :---------------------- |
+| 场景    | 示例               |
+| :---- | :--------------- |
 | 数据库备份 | 每天凌晨 2 点备份 MySQL |
-| 报表生成   | 每周一生成业务报表      |
-| 数据清理   | 每小时清理过期日志      |
-| 邮件推送   | 每天定时发送营销邮件    |
-| 同步任务   | 每 5 分钟同步外部数据   |
-| 证书续期   | 定期检查并续期 TLS 证书 |
+| 报表生成  | 每周一生成业务报表        |
+| 数据清理  | 每小时清理过期日志        |
+| 邮件推送  | 每天定时发送营销邮件       |
+| 同步任务  | 每 5 分钟同步外部数据     |
+| 证书续期  | 定期检查并续期 TLS 证书   |
 
 #### 4.3.3 核心字段详解
 
@@ -2238,11 +2272,11 @@ spec:
 
 #### 4.3.5 并发策略 `concurrencyPolicy`
 
-| 策略            | 行为                        |
-| :-------------- | :-------------------------- |
-| `Allow`（默认） | 允许并发运行                |
-| `Forbid`        | 跳过本次调度                |
-| `Replace`       | 取消当前 Job，用新 Job 替换 |
+| 策略          | 行为                 |
+| :---------- | :----------------- |
+| `Allow`（默认） | 允许并发运行             |
+| `Forbid`    | 跳过本次调度             |
+| `Replace`   | 取消当前 Job，用新 Job 替换 |
 
 #### 4.3.6 错过调度处理
 
@@ -2267,13 +2301,13 @@ spec:
 
 ### 4.4 五种工作负载控制器怎么选
 
-| 控制器 | 目标 | Pod 身份 / 存储 | 典型用途 |
-| :----- | :--- | :-------------- | :------- |
-| **Deployment** | 固定副本数无状态服务 | 随机名 + 随机 IP | web、api |
-| **StatefulSet** | 稳定身份有状态服务 | 固定名 + 独立 PVC + 稳定 DNS | 数据库、MQ、etcd |
-| **DaemonSet** | 每个节点跑一个 | 随机，无稳定身份 | 日志、监控、网络插件 |
-| **Job** | 一次性任务，跑完即退 | 随机 | 数据转换、批处理计算 |
-| **CronJob** | 按 Cron 定时造 Job | 随机 | 备份、报表、清理 |
+| 控制器             | 目标             | Pod 身份 / 存储           | 典型用途        |
+| :-------------- | :------------- | :-------------------- | :---------- |
+| **Deployment**  | 固定副本数无状态服务     | 随机名 + 随机 IP           | web、api     |
+| **StatefulSet** | 稳定身份有状态服务      | 固定名 + 独立 PVC + 稳定 DNS | 数据库、MQ、etcd |
+| **DaemonSet**   | 每个节点跑一个        | 随机，无稳定身份              | 日志、监控、网络插件  |
+| **Job**         | 一次性任务，跑完即退     | 随机                    | 数据转换、批处理计算  |
+| **CronJob**     | 按 Cron 定时造 Job | 随机                    | 备份、报表、清理    |
 
 **选择原则**：
 
@@ -2316,14 +2350,14 @@ kubectl / SDK / Dashboard / Pod 内进程
 
 先记住一个反直觉的事实：**K8s 里没有「用户」这个 API 对象**。apiserver 不存用户表（`kubectl get users` 查不到），用户名就是认证插件从凭证里「提取出来的一串字符串」——所以**认证方式的本质 = 用什么凭证向 apiserver 声称一个身份**。
 
-| 认证方式 | 凭证载体 | 谁在用 | 备注 |
-|---------|---------|-------|------|
+| 认证方式                       | 凭证载体                                                    | 谁在用                                      | 备注                                                              |
+| -------------------------- | ------------------------------------------------------- | ---------------------------------------- | --------------------------------------------------------------- |
 | **X509 客户端证书**（HTTPS 双向认证） | kubeconfig 里的 client-certificate-data / client-key-data | kubectl、集群组件（kubelet、controller-manager） | kubeadm 的 `/etc/kubernetes/admin.conf` 就是它；**CN = 用户名，O = 用户组** |
-| **Bearer Token（JWT）** | ServiceAccount token | Pod 内进程、CI/CD、Dashboard 登录 | 你说的 jwt 就在这：**SA token 本身就是一张 JWT**，apiserver 用公钥验签 |
-| Bootstrap Token | `kubeadm join` 用的临时 token | 节点加入集群 | 有时效，只够搬运一次性流程 |
-| **OIDC** | 外部 IdP 签的 id_token | 企业人群登录（Keycloak / GitLab / 企业微信） | kubectl 侧靠 `kubelogin` 之类插件换 token |
-| Webhook TokenReview | 甩给外部服务审查 token | 自研账号体系 | 每次请求都回调，注意可用性 |
-| 静态密码 / 匿名 | 静态文件 / `--anonymous-auth` | — | 静态基本弃用；**生产建议关匿名** |
+| **Bearer Token（JWT）**      | ServiceAccount token                                    | Pod 内进程、CI/CD、Dashboard 登录               | 你说的 jwt 就在这：**SA token 本身就是一张 JWT**，apiserver 用公钥验签             |
+| Bootstrap Token            | `kubeadm join` 用的临时 token                               | 节点加入集群                                   | 有时效，只够搬运一次性流程                                                   |
+| **OIDC**                   | 外部 IdP 签的 id_token                                      | 企业人群登录（Keycloak / GitLab / 企业微信）         | kubectl 侧靠 `kubelogin` 之类插件换 token                              |
+| Webhook TokenReview        | 甩给外部服务审查 token                                          | 自研账号体系                                   | 每次请求都回调，注意可用性                                                   |
+| 静态密码 / 匿名                  | 静态文件 / `--anonymous-auth`                               | —                                        | 静态基本弃用；**生产建议关匿名**                                              |
 
 #### ① HTTPS 证书认证：kubeconfig 的三段结构
 
@@ -2389,19 +2423,19 @@ spec:
 
 RBAC（Role-Based Access Control）的思路就三件事：**谁（subject）→ 被授予哪份权限（role）→ 绑起来（binding）**。所以对象只有四个两个层级：
 
-| 对象 | 级别 | 作用 |
-|------|------|------|
-| **Role** | 命名空间 | 定义权限（哪些资源、哪些动词） |
-| **ClusterRole** | 集群 | 同上，且能管集群级资源（Node / PV / ns / 非资源端点） |
-| **RoleBinding** | 命名空间 | 把角色绑给主体，只在**该 ns** 生效 |
-| **ClusterRoleBinding** | 集群 | 把角色绑给主体，**全集群 + 所有 ns** 生效 |
+| 对象                     | 级别   | 作用                                  |
+| ---------------------- | ---- | ----------------------------------- |
+| **Role**               | 命名空间 | 定义权限（哪些资源、哪些动词）                     |
+| **ClusterRole**        | 集群   | 同上，且能管集群级资源（Node / PV / ns / 非资源端点） |
+| **RoleBinding**        | 命名空间 | 把角色绑给主体，只在**该 ns** 生效               |
+| **ClusterRoleBinding** | 集群   | 把角色绑给主体，**全集群 + 所有 ns** 生效          |
 
 **binding 拓扑**（这 2×2 矩阵是重点，四个格子里有三个坑）：
 
-| 角色 ↓ ＼ 绑定 → | **RoleBinding**（ns 级） | **ClusterRoleBinding**（集群级） |
-|-----------------|------------------------|--------------------------------|
-| **Role**（ns 级） | ✅ 本 ns 生效（最标准的用法） | ⚠️ 合法但几乎不用：把 ns 级 Role 放大到全集群，权限直接溢出 |
-| **ClusterRole**（集群级） | ✅ **高频混搭**：权限定义是集群级的，但**降级到单个 ns 生效** | ✅ 全集群 + 所有 ns 生效 |
+| 角色 ↓ ＼ 绑定 →          | **RoleBinding**（ns 级）                 | **ClusterRoleBinding**（集群级）          |
+| -------------------- | ------------------------------------- | ------------------------------------ |
+| **Role**（ns 级）       | ✅ 本 ns 生效（最标准的用法）                     | ⚠️ 合法但几乎不用：把 ns 级 Role 放大到全集群，权限直接溢出 |
+| **ClusterRole**（集群级） | ✅ **高频混搭**：权限定义是集群级的，但**降级到单个 ns 生效** | ✅ 全集群 + 所有 ns 生效                     |
 
 > 中间那格「ClusterRole + RoleBinding」是实操最常用的省钱组合：官方现成的 ClusterRole（`view` / `edit` / `admin`）直接复用，用 RoleBinding 限制在某一个 ns——**不用为每个 ns 抄一份 Role**。
 >
@@ -2409,11 +2443,11 @@ RBAC（Role-Based Access Control）的思路就三件事：**谁（subject）→
 
 **ClusterRole 的三类典型用途**（对应你草稿里那三条）：
 
-| 用途 | 说明 | 例子 |
-|------|------|------|
-| **集群级资源** | Node / Namespace / PV / StorageClass / ClusterRole 这类不属于任何 ns 的资源 | 给监控只读 Node |
-| **非资源端点** | `/healthz`、`/metrics`、`/version` 这类 URL（走 `nonResourceURLs`，**只能写在 ClusterRole，Role 不支持**） | 给探活组件放行 `/healthz` |
-| **所有命名空间的控制资源** | Pod / Deployment / Service……一次性给全 ns 授权 | `cluster-admin`、集群级只读账号 |
+| 用途              | 说明                                                                                         | 例子                      |
+| --------------- | ------------------------------------------------------------------------------------------ | ----------------------- |
+| **集群级资源**       | Node / Namespace / PV / StorageClass / ClusterRole 这类不属于任何 ns 的资源                          | 给监控只读 Node              |
+| **非资源端点**       | `/healthz`、`/metrics`、`/version` 这类 URL（走 `nonResourceURLs`，**只能写在 ClusterRole，Role 不支持**） | 给探活组件放行 `/healthz`      |
+| **所有命名空间的控制资源** | Pod / Deployment / Service……一次性给全 ns 授权                                                    | `cluster-admin`、集群级只读账号 |
 
 ```yaml
 apiVersion: rbac.authorization.k8s.io/v1
@@ -2437,20 +2471,20 @@ rules:
 
 **rule 的四要素**：
 
-| 字段 | 说明 | 常见踩点 |
-|------|------|---------|
-| `apiGroups` | core 组写成 `""`；其余 `apps` / `batch` / `networking.k8s.io` | **组写错 = 权限静默不生效**（不报错，只是没权限） |
-| `resources` | 一律**复数**：`pods`、`deployments`；子资源写 `pods/log`、`pods/exec`、`deployments/scale` | `kubectl logs`/`exec` 要**单独**给 `pods/log`、`pods/exec` |
-| `verbs` | `get` `list` `watch` `create` `update` `patch` `delete` `deletecollection` | 只读三件套 = get+list+watch（漏 list 会出现「能 get 单个对象但列表 403」的怪象） |
-| `resourceNames` | 精确到某个对象名 | 只让看某一个 Secret 时使用 |
+| 字段              | 说明                                                                            | 常见踩点                                                     |
+| --------------- | ----------------------------------------------------------------------------- | -------------------------------------------------------- |
+| `apiGroups`     | core 组写成 `""`；其余 `apps` / `batch` / `networking.k8s.io`                       | **组写错 = 权限静默不生效**（不报错，只是没权限）                             |
+| `resources`     | 一律**复数**：`pods`、`deployments`；子资源写 `pods/log`、`pods/exec`、`deployments/scale` | `kubectl logs`/`exec` 要**单独**给 `pods/log`、`pods/exec`    |
+| `verbs`         | `get` `list` `watch` `create` `update` `patch` `delete` `deletecollection`    | 只读三件套 = get+list+watch（漏 list 会出现「能 get 单个对象但列表 403」的怪象） |
+| `resourceNames` | 精确到某个对象名                                                                      | 只让看某一个 Secret 时使用                                        |
 
 **subjects：角色绑给谁**（三种，写错 ns 是高频事故）：
 
-| kind | 值 | 场景 |
-|------|-----|------|
-| **User** | 字符串，如 `"dev-user"`（= 证书 CN） | 人类账号 |
-| **Group** | 如 `"dev-team"`（= 证书 O） | 人类组 |
-| **ServiceAccount** | 必须带 ns：`<ns>/<sa名>` | Pod 内程序、CI/CD |
+| kind               | 值                           | 场景            |
+| ------------------ | --------------------------- | ------------- |
+| **User**           | 字符串，如 `"dev-user"`（= 证书 CN） | 人类账号          |
+| **Group**          | 如 `"dev-team"`（= 证书 O）      | 人类组           |
+| **ServiceAccount** | 必须带 ns：`<ns>/<sa名>`         | Pod 内程序、CI/CD |
 
 ```yaml
 subjects:
@@ -2461,22 +2495,22 @@ subjects:
 
 **system: 保留关键字**（这是一类内置身份，别自己建同名对象）：
 
-| 内置组 / 用户 | 含义 | 危险度 |
-|-------------|------|-------|
-| `system:masters` | 超管组（admin.conf 的 `O=system:masters`），**直接绕过所有 RBAC** | ⚠️ 最高 |
-| `system:authenticated` | 所有通过认证的请求 | 给它授权 = 给全人类授权 |
-| `system:unauthenticated` | 匿名请求 | 生产禁止授予任何权限 |
-| `system:nodes` / `system:node:<hostname>` | kubelet 专用 | 由 Node authorizer 管 |
-| `system:serviceaccounts:<ns>` | 该 ns 下所有 SA | 批量授权会连新 SA 一起放行 |
+| 内置组 / 用户                                  | 含义                                                   | 危险度                 |
+| ----------------------------------------- | ---------------------------------------------------- | ------------------- |
+| `system:masters`                          | 超管组（admin.conf 的 `O=system:masters`），**直接绕过所有 RBAC** | ⚠️ 最高               |
+| `system:authenticated`                    | 所有通过认证的请求                                            | 给它授权 = 给全人类授权       |
+| `system:unauthenticated`                  | 匿名请求                                                 | 生产禁止授予任何权限          |
+| `system:nodes` / `system:node:<hostname>` | kubelet 专用                                           | 由 Node authorizer 管 |
+| `system:serviceaccounts:<ns>`             | 该 ns 下所有 SA                                          | 批量授权会连新 SA 一起放行     |
 
 顺手记四个**内置 ClusterRole**（拿来即用，省得自己写 rule）：
 
-| ClusterRole | 权限 |
-|-------------|------|
+| ClusterRole     | 权限                        |
+| --------------- | ------------------------- |
 | `cluster-admin` | 集群一切（所有 ns + 所有资源 + 所有动词） |
-| `admin` | 某 ns 内一切（配 RoleBinding 用） |
-| `edit` | 能改能删工作负载，不能动 RBAC 和配额 |
-| `view` | 只读，不能改 Secret |
+| `admin`         | 某 ns 内一切（配 RoleBinding 用） |
+| `edit`          | 能改能删工作负载，不能动 RBAC 和配额     |
+| `view`          | 只读，不能改 Secret             |
 
 完整示例（Role + RoleBinding，Pod 只读）：
 
@@ -2512,14 +2546,14 @@ roleRef:
 
 **常用内置准入插件**（默认随 apiserver 启用）：
 
-| 准入插件 | 干的事 |
-|---------|-------|
-| NamespaceLifecycle | ns 不存在 / 正在删除时禁止建资源（防资源孤儿） |
-| **LimitRanger / ResourceQuota** | 落实 LimitRange 的默认值与 ns 配额（见 10.2 / 10.3） |
-| ServiceAccount | 给 Pod 补 SA、投射 token 卷 |
-| DefaultStorageClass | PVC 没写 SC 时补默认 SC |
-| **PodSecurity**（1.25+） | 执行 `privileged` / `baseline` / `restricted` 三档安全基线，接替已移除的 PodSecurityPolicy(PSP) |
-| MutatingAdmissionWebhook / ValidatingAdmissionWebhook | 动态准入：把判决甩给集群内的一个 Webhook 服务 |
+| 准入插件                                                  | 干的事                                                                              |
+| ----------------------------------------------------- | -------------------------------------------------------------------------------- |
+| NamespaceLifecycle                                    | ns 不存在 / 正在删除时禁止建资源（防资源孤儿）                                                       |
+| **LimitRanger / ResourceQuota**                       | 落实 LimitRange 的默认值与 ns 配额（见 10.2 / 10.3）                                         |
+| ServiceAccount                                        | 给 Pod 补 SA、投射 token 卷                                                            |
+| DefaultStorageClass                                   | PVC 没写 SC 时补默认 SC                                                                |
+| **PodSecurity**（1.25+）                                | 执行 `privileged` / `baseline` / `restricted` 三档安全基线，接替已移除的 PodSecurityPolicy(PSP) |
+| MutatingAdmissionWebhook / ValidatingAdmissionWebhook | 动态准入：把判决甩给集群内的一个 Webhook 服务                                                      |
 
 > 动态准入是 Service Mesh 这类东西的实现底座（istio 的 sidecar 自动注入就是 **MutatingWebhook** 干的）。但代价是**每次请求都多一次网络回调**：webhook 挂了 + `failurePolicy: Fail` = **整个集群无法创建 Pod**（除非设 Ignore，但那样策略被绕过）。所以生产要给 webhook 本身做高可用，`timeoutSeconds` 别设太大。
 
@@ -2558,13 +2592,13 @@ spec:
 
 常用 CEL 规则（照抄改改就能用）：
 
-| 想拦什么 | CEL 表达式 |
-|---------|-----------|
-| 禁止 `:latest` 标签 | `object.spec.template.spec.containers.all(c, !c.image.endsWith(':latest'))` |
-| 必须写资源限制 | `object.spec.template.spec.containers.all(c, has(c.resources.limits))` |
-| 副本数至少 2 | `object.spec.replicas >= 2` |
-| 禁止特权容器 | `object.spec.template.spec.containers.all(c, !has(c.securityContext.privileged) \|\| c.securityContext.privileged == false)` |
-| 必须指定 imagePullPolicy | `object.spec.template.spec.containers.all(c, has(c.imagePullPolicy))` |
+| 想拦什么                 | CEL 表达式                                                                                                                      |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| 禁止 `:latest` 标签      | `object.spec.template.spec.containers.all(c, !c.image.endsWith(':latest'))`                                                  |
+| 必须写资源限制              | `object.spec.template.spec.containers.all(c, has(c.resources.limits))`                                                       |
+| 副本数至少 2              | `object.spec.replicas >= 2`                                                                                                  |
+| 禁止特权容器               | `object.spec.template.spec.containers.all(c, !has(c.securityContext.privileged) \|\| c.securityContext.privileged == false)` |
+| 必须指定 imagePullPolicy | `object.spec.template.spec.containers.all(c, has(c.imagePullPolicy))`                                                        |
 
 > **注意边界**：VAP 只能**校验**，不能改写对象；要改对象（自动补默认值、注入 sidecar）得用 MutatingAdmissionWebhook（MutatingAdmissionPolicy 是更晚才出现的能力，别混着记）。
 >
@@ -2682,10 +2716,184 @@ kubectl auth reconcile -f role.yaml                                    # 按文�
 > **安全全流程**：apiserver 的三道门是 **认证（身份从凭证里提取）→ 鉴权（RBAC 三元组：资源 × 动词 × 主体）→ 准入（内置插件 + Webhook + VAP/CEL）**，kubectl 报 401 查认证、403 查鉴权。
 >
 > 1. **K8s 没有 User 对象**，证书里 CN=用户名 / O=组名，SA token 就是一张 JWT
->2. **1.24 起 SA 不再自动建 Secret token**，用 `kubectl create token` 现签；旧版永久 token 泄露就是永久后门
+> 2. **1.24 起 SA 不再自动建 Secret token**，用 `kubectl create token` 现签；旧版永久 token 泄露就是永久后门
 > 3. **ClusterRole + RoleBinding = 集群权限降级到单 ns**，这是复用官方 `view/edit/admin` 的标准姿势
 > 4. **apiGroups / resources / verbs 用复数、别写 `*`**，`pods/log`、`pods/exec` 是独立子资源，得单独授
 > 5. **VAP+CEL 先 Audit 后 Deny**；动态 Webhook 的 `failurePolicy: Fail` 会把 webhook 故障放大成全集群不可部署
+
+### 5.8 场景实战 @scene#22：CI/CD 接入 K8s 的凭证获取（join token vs SA token）
+
+> **先纠偏（高频混淆）**：一提「k8s token」新人容易把两个东西混为一谈——**`kubeadm join` 用的是 Bootstrap Token（给节点加入集群），CI/CD 部署用的是 ServiceAccount Token（给 kubectl/SDK 调 apiserver）**。CI/CD 流水线要部署应用，**拿的是 SA token（Bearer JWT），不是 join token**。把 join 命令里的 `--token` 当 kubectl 凭证用会直接 401，因为那张 token 只能过 bootstrap 握手，不是合法的 Bearer 身份。下面两种都给，但 CI/CD 真正用 §B。
+
+#### 两种 token 速查
+
+| 维度         | Bootstrap Token（kubeadm join）                  | ServiceAccount Token（CI/CD 部署）                                          |
+| ---------- | ---------------------------------------------- | ----------------------------------------------------------------------- |
+| 用途         | **节点**加入集群（`kubeadm join`）                     | **kubectl / SDK / CI** 调 apiserver 部署资源                                 |
+| 签发         | `kubeadm token create`                         | `kubectl create token <sa>`（1.24+）                                      |
+| 身份载体       | `kube-system` 下的 Secret `bootstrap-token-<id>` | SA 现签 JWT（默认 1h），或自建 `type: kubernetes.io/service-account-token` Secret |
+| 默认有效期      | **24h**（bootstrap token 硬上限）                   | 1h（`--duration` 可调）                                                     |
+| RBAC       | 仅够 bootstrap 握手，无业务权限                          | 由绑定的 Role/ClusterRoleBinding 决定                                         |
+| CI/CD 用得到吗 | 仅当你在流水线里**动态扩节点**时才用                           | **是**，日常部署全靠它                                                           |
+
+#### A. kubeadm join token（节点加入，CI/CD 极少用）
+
+只在「流水线自动拉起新节点」这类场景出现。注意它 **24h 必过期**，CI 里要动态取就得每次重新 create：
+
+```bash
+kubeadm token list                                  # 看现有 token（过期的不显示）
+kubeadm token create --ttl=2h --print-join-command  # 带有效期的 join 命令，直接贴给 node 跑
+# 输出：kubeadm join k8s-master:6443 --token xxxx --discovery-token-ca-cert-hash sha256:yyy
+
+# 手动取 discovery-token-ca-cert-hash（join 命令里的 sha256，CA 不变就一成不变）
+openssl x509 -pubkey -in /etc/kubernetes/pki/ca.crt | \
+  openssl rsa -pubin -outform der 2>/dev/null | \
+  openssl dgst -sha256 -hex
+```
+
+> **纠偏**：Bootstrap Token 本质是 `kube-system/bootstrap-token-<token-id>` 这个 Secret，TTL 一过 `kubeadm token list` 里就消失、节点也加不进来。CI 里要**每次重新 `kubeadm token create`**，别把过期 token 固化进流水线变量——这是节点扩容流水线「昨天还能跑今天 401」的头号原因。
+
+#### B. CI/CD 真正要的：ServiceAccount token + kubeconfig
+
+四步：建 SA → 绑最小权限 → 签发 token → 拼 kubeconfig 存进 CI 变量。
+
+**① 建 SA + 最小权限 Role（dev 空间，只给 deploy 相关动词）**
+
+```yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ci-bot
+  namespace: dev
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: ci-deployer
+  namespace: dev
+rules:
+- apiGroups: ["", "apps", "batch"]                 # 部署/扩缩/看 Pod/跑 Job
+  resources: ["deployments", "deployments/scale", "pods", "jobs"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: [""]
+  resources: ["configmaps", "secrets"]
+  verbs: ["get", "list"]                            # CI 拉配置用，不给写，防误改
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: ci-deployer
+  namespace: dev
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: ci-deployer
+subjects:
+- kind: ServiceAccount
+  name: ci-bot
+  namespace: dev                                    # 不写 ns = 绑空气，403 查半天
+```
+
+**② 签发 token + 拼 kubeconfig**
+
+```bash
+# 1. 签发有时效的 token（长跑/定时任务调大 --duration，但别忘了轮转）
+TOKEN=$(kubectl -n dev create token ci-bot --duration=1h)
+
+# 2. 取 apiserver 地址与集群 CA（CI runner 在集群外要能路由到 6443）
+SERVER=$(kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}')
+CA=$(kubectl config view --minify -o jsonpath='{.clusters[0].cluster.certificate-authority-data}')
+
+# 3. 拼一份独立 kubeconfig（不要直接把 admin.conf 交出去）
+kubectl --kubeconfig=/tmp/ci-kubeconfig config set-cluster k8s \
+  --server="$SERVER" --certificate-authority-data="$CA"
+kubectl --kubeconfig=/tmp/ci-kubeconfig config set-credentials ci-bot --token="$TOKEN"
+kubectl --kubeconfig=/tmp/ci-kubeconfig config set-context ci --cluster=k8s --user=ci-bot --namespace=dev
+kubectl --kubeconfig=/tmp/ci-kubeconfig config use-context ci
+kubectl --kubeconfig=/tmp/ci-kubeconfig auth can-i apply deployments -n dev   # 验权限
+```
+
+**③ 存进 CI 变量并部署**
+
+```yaml
+# GitLab CI（.gitlab-ci.yml）：把上面拼好的 kubeconfig 存成 File 型变量 CI_KUBECONFIG
+deploy:
+  image: bitnami/kubectl:latest
+  variables:
+    KUBECONFIG: "$CI_KUBECONFIG"        # File 型变量，切勿明文 commit
+  script:
+    - kubectl apply -f deploy.yaml
+    - kubectl rollout status deployment/my-app -n dev
+```
+
+```yaml
+# GitHub Actions：把 kubeconfig 存进 secrets.KUBECONFIG
+# - name: Deploy
+#   uses: azure/k8s-deploy@v5
+#   with:
+#     kubeconfig: ${{ secrets.KUBECONFIG }}
+#     manifests: deploy.yaml
+```
+
+> **踩坑集（把坑一次性说清）**：
+>
+> 1. **kubeconfig 永远别 commit 进仓库**——存 GitLab CI File 变量 / GitHub Actions secret（加密）。token 泄露 = 该 SA 权限范围内的后门，等于把 dev 空间的部署权限交出去。
+> 2. **1.24+ `kubectl create token` 默认 1h 过期**：长跑流水线或 cron 定时任务若 token 中途失效，会卡在 `apply` 报 401。要么调大 `--duration`，要么改成**自建长期 Secret**（`kubectl -n dev create token` 临时 token 别往配置里贴，见 §5.1 版本分水岭）。长期 Secret 有泄露风险，要配轮转。
+> 3. **RBAC 最小权限**：CI 只给 `deployments/pods/jobs` 这几类 + 必要 verbs，别写 `["*"]`、别绑 `cluster-admin`——§5.6 那条「`create pods`+`exec`≈送节点 root」对 CI 身份同样成立。
+> 4. **跨集群路由**：`server` 填 apiserver 的 VIP/域名，CI runner 在集群外时必须能 TCP 通 `:6443`，否则 `kubectl` 直接 timeout，不是鉴权问题。
+> 5. **复用官方 ClusterRole**：若 CI 只需某 ns 内全量，`RoleBinding` 直接绑官方 `edit`/`admin` 比自己抄 rule 省事（§5.2 的 ClusterRole+RoleBinding 混搭）。
+
+#### 排障实录（本次 hands-on 三连坑，顺序即排障顺序）
+
+一次真实建集群连踩三个坑，记录现象→根因→修法，方便对照自查。
+
+**坑① `kubeadm join` 报 `unknown flag: --token:xxxx`**
+
+```text
+kubeadm join k8s-master:6443 --token:xyjsuv.hza9u9yu9xzkp6lc
+unknown flag: --token:xyjsuv.hza9u9yu9xzkp6lc
+```
+- **根因**：用了冒号 `--token:值`。kubeadm 用 pflag，只认 `--flag=值` 或 `--flag 值`，冒号会被当成 flag 名的一部分，整段变成「未知 flag」。
+- **修**：`--token xyjsuv...`（空格）或 `--token=xyjsuv...`（等号）。**别手敲 join 命令**，直接 `kubeadm token create --print-join-command` 复制，从根上避免笔误。
+
+**坑② 缺 CA 指纹被拒**
+
+```text
+discovery.bootstrapToken.caCertHashes: Invalid value: "": using token-based
+discovery without caCertHashes can be unsafe. Set unsafeSkipCAVerification as
+true ... or pass --discovery-token-unsafe-skip-ca-verification flag to continue
+```
+- **根因**：token 发现机制强制要求 CA 指纹，否则怕连到伪造的 apiserver。
+- **修**：补 `--discovery-token-ca-cert-hash sha256:<hash>`（master 上 `openssl x509 -pubkey -in /etc/kubernetes/pki/ca.crt | openssl rsa -pubin -outform der 2>/dev/null | openssl dgst -sha256 -hex` 取，见 §A）。**别用 `--discovery-token-unsafe-skip-ca-verification`**。token 默认 24h 过期，过期先 `kubeadm token create --print-join-command` 拿新的（自带 hash）。
+
+**坑③ `kubectl` 连 `localhost:8080` 被拒**
+
+```text
+couldn't get current server API group list: Get "http://localhost:8080/api?timeout=32s":
+dial tcp 127.0.0.1:8080: connect: connection refused
+The connection to the server localhost:8080 was refused - did you specify the right host or port?
+```
+- **根因**：kubectl 完全没找到 kubeconfig（没 `KUBECONFIG`、没 `~/.kube/config`），退化去连老默认端口 8080。**不是 apiserver 挂，是凭证没就位**——若 kubeconfig 在但 apiserver 真挂，会去连真实的 `:6443` 超时，而不是 8080 refused。
+- **修**（master 上，kubeadm init 末尾的标准动作）：
+
+```bash
+mkdir -p $HOME/.kube
+cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+chown $(id -u):$(id -g) $HOME/.kube/config
+# 临时生效也可：export KUBECONFIG=/etc/kubernetes/admin.conf
+```
+先 `ls -l /etc/kubernetes/admin.conf` 确认存在；不存在 = `kubeadm init` 没跑完，不是 kubeconfig 问题。
+
+**闭环验证**：三坑排完，`kubectl get nodes` 出结果（3 节点 `NotReady` 是预期内——CNI 网络插件还没装，装完才变 `Ready`）：
+
+```text
+NAME           STATUS     ROLES           AGE   VERSION
+k8s-master01   NotReady   control-plane   51m   v1.33.13
+k8s-node01     NotReady   <none>          18m   v1.33.13
+k8s-node02     NotReady   <none>          18m   v1.33.13
+```
+
+> **经验**：节点刚 join 完显示 `NotReady` 是**正常**的，CNI（Calico/Flannel/Cilium）没装，网络没通，状态就是 NotReady——看到 `Ready` 才算网络通。这跟上面三个坑是两码事，别又去折腾 join 命令或 kubeconfig。
 
 ---
 
@@ -2703,20 +2911,20 @@ kubectl auth reconcile -f role.yaml                                    # 按文�
 
 解决的问题是「部署一个应用 = 手工 apply 十几个 yaml + 逐个手改镜像/域名/副本数」的复制粘贴地狱。
 
-| 概念 | 含义 | yum 类比 |
-|------|------|---------|
-| **Chart** | 模板包（内含 Deployment / Service / Ingress / values） | `.rpm` 包本身 |
-| **Repository** | 存放分发 Chart 的仓库 | yum 源 |
-| **Release** | Chart 的一次安装实例（同一 chart 可装多份） | 同一包装出来的多个实例 |
+| 概念             | 含义                                              | yum 类比      |
+| -------------- | ----------------------------------------------- | ----------- |
+| **Chart**      | 模板包（内含 Deployment / Service / Ingress / values） | `.rpm` 包本身  |
+| **Repository** | 存放分发 Chart 的仓库                                  | yum 源       |
+| **Release**    | Chart 的一次安装实例（同一 chart 可装多份）                    | 同一包装出来的多个实例 |
 
 #### Helm 2 vs Helm 3：Tiller 为什么没了
 
-| | Helm 2（已废弃） | Helm 3（现役） |
-|---|---|---|
-| 架构 | 客户端 + **Tiller**（集群内的服务端 Pod） | 纯客户端二进制，直接读 kubeconfig 调 apiserver |
-| 权限来源 | Tiller 自己的 SA，通常是 **cluster-admin** | 沿用操作者的 kubeconfig 权限（RBAC 天然约束） |
-| Release 存储 | ConfigMap（谁都能看） | Secret |
-| 三方插件 | helm-diff 要靠插件 | 官方 `plugin` 机制 + 大量社区插件 |
+|            | Helm 2（已废弃）                         | Helm 3（现役）                         |
+| ---------- | ----------------------------------- | ---------------------------------- |
+| 架构         | 客户端 + **Tiller**（集群内的服务端 Pod）       | 纯客户端二进制，直接读 kubeconfig 调 apiserver |
+| 权限来源       | Tiller 自己的 SA，通常是 **cluster-admin** | 沿用操作者的 kubeconfig 权限（RBAC 天然约束）    |
+| Release 存储 | ConfigMap（谁都能看）                     | Secret                             |
+| 三方插件       | helm-diff 要靠插件                      | 官方 `plugin` 机制 + 大量社区插件            |
 
 > **Tiller 被砍的原因就是个权限放大器**：它是集群里一个手握 cluster-admin 的常驻 Pod，**任何能访问它的人都能间接获得集群最高权限**——等于给 RBAC 开了后门。Helm3 直接删掉 Tiller，现在 Helm 干的事本质就是「渲染 templates → 用你的身份 kubectl apply → 记录 Release 历史」。**看到任何讲 Tiller / `helm init` 的教程直接跳过，那是 Helm2。**
 
@@ -2733,19 +2941,19 @@ helm repo list
 helm search repo nginx
 ```
 
-| 动作 | 命令 |
-|------|------|
-| 安装 | `helm install <release> <chart>` |
-| 指定 ns | `helm install my-redis bitnami/redis -n db --create-namespace` |
-| 升级 | `helm upgrade <release> <chart> --set replicaCount=3 -f my-values.yaml` |
-| **安装或升级**（CI 幂等写法） | `helm upgrade --install <release> <chart> -f prod-values.yaml` |
-| 回滚 | `helm history <release>` → `helm rollback <release> 1`（每次 upgrade 版本 +1） |
-| 查生效配置 | `helm get values <release>` / `helm get manifest <release>` |
-| 看状态 | `helm status <release>` / `helm list -A` |
-| 拉包研究 | `helm pull <chart> --untar` |
-| 卸载 | `helm uninstall <release>`（保留历史加 `--keep-history`） |
-| 本地渲染 | `helm template <release> <chart>` —— **不连集群，先看最终渲染成啥样** |
-| 干跑 | `helm install ... --dry-run --debug` |
+| 动作                 | 命令                                                                       |
+| ------------------ | ------------------------------------------------------------------------ |
+| 安装                 | `helm install <release> <chart>`                                         |
+| 指定 ns              | `helm install my-redis bitnami/redis -n db --create-namespace`           |
+| 升级                 | `helm upgrade <release> <chart> --set replicaCount=3 -f my-values.yaml`  |
+| **安装或升级**（CI 幂等写法） | `helm upgrade --install <release> <chart> -f prod-values.yaml`           |
+| 回滚                 | `helm history <release>` → `helm rollback <release> 1`（每次 upgrade 版本 +1） |
+| 查生效配置              | `helm get values <release>` / `helm get manifest <release>`              |
+| 看状态                | `helm status <release>` / `helm list -A`                                 |
+| 拉包研究               | `helm pull <chart> --untar`                                              |
+| 卸载                 | `helm uninstall <release>`（保留历史加 `--keep-history`）                       |
+| 本地渲染               | `helm template <release> <chart>` —— **不连集群，先看最终渲染成啥样**                  |
+| 干跑                 | `helm install ... --dry-run --debug`                                     |
 
 > 对比记忆：Helm 的 `install / upgrade / rollback` ≈ 应用级的 `apply / set image / rollout undo`，但管的是**一整套资源**（Deployment + Service + ConfigMap + Ingress 一把梭），版本历史随 Release 走。
 
@@ -2764,16 +2972,16 @@ mychart/
     └── NOTES.txt       # install 完打印的使用说明
 ```
 
-| 写法 | 作用 |
-|------|------|
-| `{{ .Values.replicaCount }}` | 取 values.yaml 的值 |
-| `{{ .Release.Name }}` / `{{ .Release.Namespace }}` | Release 名 / 命名空间 |
-| `{{ .Chart.Name }}-{{ .Chart.Version }}` | 做标签、做命名 |
-| `{{ .Values.image.tag \| quote }}` | 强制加引号（防 `tag: 1.20` 被当数字） |
-| `{{ .Values.port \| default 80 }}` | 默认值兜底 |
-| `{{- if .Values.ingress.enabled }} ... {{- end }}` | 条件开关（最常用：要不要建 Ingress） |
-| `{{- range .Values.hosts }} ... {{- end }}` | 遍历数组 |
-| `{{ include "mychart.fullname" . }}` | 复用 `_helpers.tpl` 里的命名片段 |
+| 写法                                                 | 作用                        |
+| -------------------------------------------------- | ------------------------- |
+| `{{ .Values.replicaCount }}`                       | 取 values.yaml 的值          |
+| `{{ .Release.Name }}` / `{{ .Release.Namespace }}` | Release 名 / 命名空间          |
+| `{{ .Chart.Name }}-{{ .Chart.Version }}`           | 做标签、做命名                   |
+| `{{ .Values.image.tag \| quote }}`                 | 强制加引号（防 `tag: 1.20` 被当数字） |
+| `{{ .Values.port \| default 80 }}`                 | 默认值兜底                     |
+| `{{- if .Values.ingress.enabled }} ... {{- end }}` | 条件开关（最常用：要不要建 Ingress）    |
+| `{{- range .Values.hosts }} ... {{- end }}`        | 遍历数组                      |
+| `{{ include "mychart.fullname" . }}`               | 复用 `_helpers.tpl` 里的命名片段  |
 
 ```yaml
 # templates/deployment.yaml 里长这样：参数从 values 取
@@ -2803,11 +3011,11 @@ helm template myapp ./mychart                       # 本地渲染，看最终 y
 
 1.3.5 讲的部署流程，这里补「组件视角 + 安全边界」：
 
-| 项 | 结论 |
-|------|------|
-| 定位 | 官方 Web UI：看资源、看日志、进终端，排障与演示用，**日常操作仍以 kubectl 为主** |
-| 访问方式 | `kubectl proxy`（最安全，只监听 127.0.0.1）> NodePort（内网）/ Ingress（**必须前置鉴权**） |
-| 身份 | SA token（`kubectl create token`，短时效）或 kubeconfig |
+| 项    | 结论                                                                                 |
+| ---- | ---------------------------------------------------------------------------------- |
+| 定位   | 官方 Web UI：看资源、看日志、进终端，排障与演示用，**日常操作仍以 kubectl 为主**                                 |
+| 访问方式 | `kubectl proxy`（最安全，只监听 127.0.0.1）> NodePort（内网）/ Ingress（**必须前置鉴权**）              |
+| 身份   | SA token（`kubectl create token`，短时效）或 kubeconfig                                   |
 | 权限纪律 | 常备一个**只读 SA**（`view` ClusterRole + RoleBinding 到目标 ns）；**严禁 cluster-admin + 公网暴露** |
 
 ```bash
@@ -2819,11 +3027,11 @@ kubectl -n kubernetes-dashboard port-forward svc/kubernetes-dashboard 8443:443
 
 先分清两个常被混淆的东西：
 
-| | **Metrics Server** | **Prometheus** |
-|---|---|---|
-| 数据留存 | 只存最近一个采样点（内存，重启即丢） | 时序数据库，长期保留 |
-| 服务谁 | `kubectl top`、HPA 的 CPU/内存决策（专题 1.3） | Grafana 面板、历史回溯、告警规则 |
-| 结论 | 装它只为了让 `top` / HPA 能工作 | 要做可观测必须上 Prometheus，**两者不是替代关系** |
+|      | **Metrics Server**                   | **Prometheus**                   |
+| ---- | ------------------------------------ | -------------------------------- |
+| 数据留存 | 只存最近一个采样点（内存，重启即丢）                   | 时序数据库，长期保留                       |
+| 服务谁  | `kubectl top`、HPA 的 CPU/内存决策（专题 1.3） | Grafana 面板、历史回溯、告警规则             |
+| 结论   | 装它只为了让 `top` / HPA 能工作               | 要做可观测必须上 Prometheus，**两者不是替代关系** |
 
 组件流水线：
 
@@ -2837,23 +3045,23 @@ kube-state-metrics（Deployment/Pod/Node 的对象状态：期望副本 vs 就�
         └─► Alertmanager   告警去重 / 分组 / 静默 / 路由（→ 钉钉 / 企微 / webhook）
 ```
 
-| 组件 | 角色 | 备注 |
-|------|------|------|
-| Prometheus Server | 拉取 + 存储时序 | Operator 模式下用 **ServiceMonitor** CRD 声明抓取目标 |
-| node-exporter | 机器指标 | DaemonSet + hostNetwork（4.1.4 的示例） |
-| kube-state-metrics | **资源对象状态**（想要/就绪副本数） | 不是性能指标，专门看对象是否健康 |
-| Alertmanager | 告警路由 | Prometheus 只算出告警，通知交给它 |
+| 组件                 | 角色                   | 备注                                          |
+| ------------------ | -------------------- | ------------------------------------------- |
+| Prometheus Server  | 拉取 + 存储时序            | Operator 模式下用 **ServiceMonitor** CRD 声明抓取目标 |
+| node-exporter      | 机器指标                 | DaemonSet + hostNetwork（4.1.4 的示例）          |
+| kube-state-metrics | **资源对象状态**（想要/就绪副本数） | 不是性能指标，专门看对象是否健康                            |
+| Alertmanager       | 告警路由                 | Prometheus 只算出告警，通知交给它                      |
 
 常用 PromQL：
 
-| 需求 | PromQL |
-|------|--------|
-| Pod CPU 使用率 | `sum(rate(container_cpu_usage_seconds_total{container!="",pod!=""}[5m])) by (pod)` |
-| Pod 内存（工作集） | `sum(container_memory_working_set_bytes{container!="",pod!=""}) by (pod)` |
-| 节点 Ready 异常 | `kube_node_status_condition{condition="Ready",status="true"} == 0` |
-| Pod 不在 Running | `kube_pod_status_phase{phase!="Running"} == 1` |
-| 频繁重启 | `increase(kube_pod_container_status_restarts_total[15m]) > 3` |
-| 磁盘将满（线性预测 4h） | `predict_linear(node_filesystem_avail_bytes[6h], 4*3600) < 0` |
+| 需求             | PromQL                                                                             |
+| -------------- | ---------------------------------------------------------------------------------- |
+| Pod CPU 使用率    | `sum(rate(container_cpu_usage_seconds_total{container!="",pod!=""}[5m])) by (pod)` |
+| Pod 内存（工作集）    | `sum(container_memory_working_set_bytes{container!="",pod!=""}) by (pod)`          |
+| 节点 Ready 异常    | `kube_node_status_condition{condition="Ready",status="true"} == 0`                 |
+| Pod 不在 Running | `kube_pod_status_phase{phase!="Running"} == 1`                                     |
+| 频繁重启           | `increase(kube_pod_container_status_restarts_total[15m]) > 3`                      |
+| 磁盘将满（线性预测 4h）  | `predict_linear(node_filesystem_avail_bytes[6h], 4*3600) < 0`                      |
 
 ```bash
 # 一条命令上全家桶（Prometheus Operator + Grafana + Alertmanager + exporters）
@@ -2867,18 +3075,18 @@ helm upgrade --install monitoring prometheus-community/kube-prometheus-stack \
 
 ### 6.6 EFK：日志栈
 
-| 组件 | 角色 |
-|------|------|
-| **E**lasticsearch | 存储 + 倒排索引检索 |
+| 组件                           | 角色                                                |
+| ---------------------------- | ------------------------------------------------- |
+| **E**lasticsearch            | 存储 + 倒排索引检索                                       |
 | **F**luent Bit / **F**luentd | 采集、过滤、转发（**Fluent Bit 更轻，K8s 首选**；Fluentd 插件生态更全） |
-| **K**ibana | 检索界面与可视化 |
+| **K**ibana                   | 检索界面与可视化                                          |
 
 两种采集拓扑：
 
-| 模式 | 做法 | 适用 |
-|------|------|------|
-| **DaemonSet（推荐）** | 每节点一个采集器，tail `/var/log/containers/*.log` | 全集群统一收集，资源省，绝大多数场景 |
-| **Sidecar** | 每个 Pod 塞一个采集容器，读共享卷 | 多租户强隔离、应用私有日志格式（业务自己写文件） |
+| 模式                | 做法                                        | 适用                       |
+| ----------------- | ----------------------------------------- | ------------------------ |
+| **DaemonSet（推荐）** | 每节点一个采集器，tail `/var/log/containers/*.log` | 全集群统一收集，资源省，绝大多数场景       |
+| **Sidecar**       | 每个 Pod 塞一个采集容器，读共享卷                       | 多租户强隔离、应用私有日志格式（业务自己写文件） |
 
 ```text
 容器 stdout/stderr

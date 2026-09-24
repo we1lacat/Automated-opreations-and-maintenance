@@ -32,7 +32,7 @@ common server/   常用服务
 | [`shell-note-zh.md`](Linux/shell-note-zh.md) | 870 行 | Shell 编程中文版：shebang、Bash 特性、父 shell 与子 shell 执行环境、变量、字符串操作、命令、脚本开发（函数 / 运算 / 条件 / 循环） |
 | [`shell.md`](Linux/shell.md) | 842 行 | 英文原稿，章节一一对应；保留英文是想练原版术语的可以直接读 |
 | [`docker-note.md`](container/docker-note.md) | 2462 行 | 安装、Docker 结构与镜像原理、常用命令、容器卷、Dockerfile（含分层缓存与构建实战）、Docker 网络（docker0 / veth pair / 自定义网络）、Compose、Swarm 集群与 stack/secret |
-| [`k8s-note.md`](container/k8s-note.md) | 2979 行 | 基础概念与架构 → kubeadm 部署集群与 Dashboard → 资源清单 / Namespace / Pod 生命周期 / Deployment / Service / Ingress / 存储（PV·PVC·SC·ConfigMap·Secret）/ 调度 / kubectl 排障工具箱 / 资源治理 → 进阶专题（HPA、SQL 上 K8s 可行性、StatefulSet、Job·DaemonSet·CronJob、安全认证鉴权准入与 RBAC、Helm 与生态组件、证书续期与 etcd 备份） |
+| [`k8s-note.md`](container/k8s-note.md) | 3550 行 | 基础概念与架构 → kubeadm 部署集群（含 Calico CNI、Dashboard、k9s）→ 资源清单 / Namespace / Pod 生命周期 / Deployment（含生产级 web 部署实战）/ Service / Ingress / 存储（PV·PVC·SC·ConfigMap·Secret）/ 调度 / kubectl 排障工具箱 / 资源治理 → 进阶专题（HPA、SQL 上 K8s 可行性、StatefulSet、Job·DaemonSet·CronJob、安全认证鉴权准入与 RBAC（含 CI/CD 凭证实战）、Helm 与生态组件、证书续期与 etcd 备份） |
 | [`NFS.md`](common%20server/NFS.md) | 1018 行 | NFS 共享存储：NFS 与 RPC/rpcbind 的端口注册原理、版本演进（v2 → v4.2）、安装部署与防火墙 / SELinux、`/etc/exports` 语法与参数全表、客户端挂载选项、fstab 与 autofs 自动挂载、root_squash 与 UID 映射的权限模型、14 条排障速查、与 K8s PV / StorageClass 的联动、性能与安全加固 |
 | `LICENSE` | — | MIT License，Copyright (c) 2026 we1l |
 
@@ -87,10 +87,12 @@ common server/   常用服务
 
 | 组件 | 版本 / 说明 |
 |------|------------|
-| Kubernetes | 部署示例基于 kubeadm v1.30.x；版本相关结论按上文方式单独标注 |
-| CNI / Ingress | Calico；ingress-nginx v0.46.0 |
+| Kubernetes | 安装与引导示例（§3.1–3.4）用 kubeadm v1.20.9；CLI 部分的老教程地址也保留其原貌。集群实战与排障（§3.5 Dashboard、CNI、§5.x 安全与 CI/CD、§6 组件）已在 **v1.33.x** 集群上跑过，1.27+ 的 Breaking Change 都在正文里单独标注 |
+| CNI / Ingress | Calico v3.31.6（对应 k8s 1.33）、ingress-nginx v0.46.0 |
+| Dashboard | Helm 安装 v3.x（k8s 1.27 起官方只维护 Helm 路线，单文件 `recommended.yaml` 已废弃） |
+| 终端 TUI | k9s v0.51.0 |
 | Docker | Engine 27.3.1、Compose v2.29.1 |
-| 镜像源 | 示例中给出国内镜像（阿里云等），境外源失效时替换即可 |
+| 镜像源 | 示例中给出国内镜像（阿里云等），境外拉不动时替换即可 |
 
 ## 怎么用这份笔记
 

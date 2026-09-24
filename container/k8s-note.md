@@ -1,11 +1,11 @@
 # Kubernetes 实战入门
 
 > **定位**：Kubernetes（K8s）= 生产级别的容器编排平台，负责自动部署、扩缩容、自愈、负载均衡一堆容器。
->   
+>
 > 和 Docker Swarm 一个赛道（Swarm 那篇在 `docker-note.md` 里写过），但 K8s 是 Google 拿 10 年 Borg 经验开源出来的，生态碾压，事实标准。
 >
 > **学习路线（进阶目标）**：
->   
+>
 > 资源清单（yaml 语法、Pod 生命周期）→ Pod 控制器（各控制器特点）→ 服务发现（SVC 原理）→ 存储（多种存储类型选型）→ 安全（认证/鉴权/访问控制）→ HELM（类似 Linux yum，模板自定义、部署常用插件）
 
 ---
@@ -16,14 +16,14 @@
 
 1. 是什么
 2. 架构（工作方式 / 组件架构 / Node 深入）
-3. kubeadm 创建集群（安装 / 引导 / 加入节点 / 验证 / Dashboard）
+3. kubeadm 创建集群（安装 / 引导 / 加入节点 / CNI 网络插件 Calico / 验证 / Dashboard / k9s）
 
 **二、Kubernetes 核心实战**
 
 1. 资源创建方式
 2. Namespace
 3. Pod
-4. Deployment（多副本 / 扩缩容 / 自愈 / 滚动更新 / 版本回退）
+4. Deployment（多副本 / 扩缩容 / 自愈 / 滚动更新 / 版本回退 / 生产级 web 部署实战）
 5. Service（ClusterIP / NodePort / LoadBalancer / ExternalName / kube-proxy 两模式）
 6. Ingress（安装 / 使用 / 域名访问 / 路径重写 / 流量限制）
 7. 存储抽象（环境准备 / 原生挂载 / PV\&PVC / StorageClass / ConfigMap / Secret）
@@ -37,7 +37,7 @@
 2. Kubernetes 运行 SQL 数据库的可行性
 3. StatefulSet（稳定身份 / Headless DNS / volumeClaimTemplates / 有序启停）
 4. Job / DaemonSet / CronJob（节点守护 / 一次性任务 / 定时调度）
-5. 安全：认证 / 鉴权 / 准入（RBAC 详解 / binding 拓扑 / VAP+CEL / 资源隔离实操）
+5. 安全：认证 / 鉴权 / 准入（RBAC 详解 / binding 拓扑 / VAP+CEL / 资源隔离实操 / CI/CD 凭证实战）
 6. Helm 与生态组件（Chart·Release·Repo / Helm3 无 Tiller / Dashboard / Prometheus / EFK）
 7. 运维专题（kubeadm 证书续期 / etcd 备份）
 
@@ -289,7 +289,7 @@ EOF
 chmod +x ./images.sh && ./images.sh
 ```
 
-> 主节点需要全部镜像；node 节点实际只用到 `kube-proxy` 和 `pause`，但推荐全下省心，配置有限的可以忽略按需即可。
+> 主节点需要全部镜像；node 节点实际只用到 `kube-proxy` 和 `pause`，但推荐全下省心。配置有限的可以忽略这点，按需下载即可。
 
 #### 3.2.2 初始化主节点（只在 master 执行）
 
@@ -310,7 +310,7 @@ EOF
 kubeadm init --config=kubeadm-config.yaml --experimental-upload-certs | tee kubeadm-init.log
 ```
 
-成功后输出长这样，**把 join 命令复制存好**：
+成功后输出如下，**把 join 命令复制存好**：
 
 ```text
 Your Kubernetes control-plane has initialized successfully!
@@ -380,21 +380,22 @@ kubectl get pods -n kube-system -w    # 等 calico-node / calico-kube-controller
 kubectl get nodes                     # NotReady → Ready
 ```
 
-| 项 | 说明 |
-|----|------|
+| 项           | 说明                                                                |
+| ----------- | ----------------------------------------------------------------- |
 | 默认 Pod CIDR | `192.168.0.0/16`；`kubeadm init` 没设 `--pod-network-cidr` 就保持默认，不用改 |
-| 版本匹配 | k8s v1.33.x → Calico **v3.31.6**（一个大版本覆盖连续 3 个 K8s minor） |
-| 安装方式 | 单文件 manifest 适合学习/showcase；生产也可走 Tigera Operator |
+| 版本匹配        | k8s v1.33.x → Calico **v3.31.6**（一个大版本覆盖连续 3 个 K8s minor）         |
+| 安装方式        | 单文件 manifest 适合学习/showcase；生产也可走 Tigera Operator                  |
 
-**踩坑：apply 报 `invalid object to validate`**
+**常见问题：apply 报 `invalid object to validate`**
 
 ```text
 error: error validating "calico.yaml": error validating data: invalid object to validate;
 if you choose to ignore these errors, turn validation off with --validate=false
 ```
+
 - **根因（最常见）**：`calico.yaml` 根本不是合法 YAML——curl 从 `docs.projectcalico.org/v3.30/manifests/...` 这类路径拿到的是 404/重定向的 **HTML 错误页**，kubectl 一解析就报「无效对象」。先 `head -5 calico.yaml` + `wc -l calico.yaml` 验：开头是 `<!DOCTYPE` / 行数才几十行 = 下载废了。
-- **修**：换 **raw github** 链接重下（上面那条），验过是 `apiVersion` 开头再 apply。
-- **次因**：文件确认是真 YAML（700+ 行）仍报错，那是 Calico CRD 的客户端校验 quirk（kubectl 默认校验认不出 CRD 类型），用 kubectl 自己提示的 `--validate=false` 绕开，对 Calico 安全：
+- **修复**：换 **raw github** 链接重下（上面那条），验过是 `apiVersion` 开头再 apply。
+- **次因**：文件确认 YAML（700+ 行）仍报错， Calico CRD 的客户端校验 quirk（kubectl 默认校验认不出 CRD 类型），用 kubectl 自己提示的 `--validate=false` 绕开，对 Calico 安全：
 
 ```bash
 kubectl apply -f calico.yaml --validate=false
@@ -425,11 +426,14 @@ kubectl get pods -A     # -A = 所有命名空间，确认全部 Running
 #### ① 部署（Helm，官方推荐）
 
 ```bash
-helm repo add kubernetes-dashboard https://kubernetes.github.io/dashboard/
+# ⚠️ 官方文档写的 https://kubernetes.github.io/dashboard/ 现 404（GitHub Pages 站点已停服）
+# 改用 chart 实际发布的 gh-pages 分支 raw 路径（index.yaml 返回 200 即有效）
+helm repo add kubernetes-dashboard https://raw.githubusercontent.com/kubernetes/dashboard/gh-pages
 helm repo update
 helm upgrade --install kubernetes-dashboard kubernetes-dashboard/kubernetes-dashboard \
   --create-namespace --namespace kubernetes-dashboard
 # 没装 helm 见 §6.1（apt/brew 装 helm 即可）
+# chart tarball 走绝对 URL 从 github releases 拉（最新 chart = 7.14.0 / 2025-10-30），不依赖 repo 基址
 ```
 
 #### ② 访问方式（port-forward，别开 NodePort 公网）
@@ -442,6 +446,11 @@ kubectl -n kubernetes-dashboard port-forward svc/kubernetes-dashboard-kong-proxy
 ```
 
 > **莫套旧教程的 `kubectl edit svc kubernetes-dashboard ... type: NodePort`** —— v3 里 svc 名/结构已变，且 NodePort 裸暴露等于把 Dashboard 放公网（历史上有未授权访问大事故）。学习/showcase 用 port-forward 足够。
+
+> **⚠️ port-forward 的"不可达"陷阱（高频）**：`port-forward` 绑在**运行 kubectl 的那台机器的 127.0.0.1** 上。如果你 SSH 进 master（FinalShell 等）在 master 上跑 forward，它绑的是 **master 的 localhost:8443**，而你浏览器在**本机 Windows**——本机的 `localhost:8443` ≠ master 的 `localhost:8443`，没隧道必"不可达"。两种解法：
+> 1. **SSH 本地端口转发（推荐）**：保持 master 上的 `port-forward` 在前台跑，在 FinalShell/SSH 客户端配一条**本地转发** `Windows localhost:8443 → master 127.0.0.1:8443`，然后本机浏览器开 `https://localhost:8443`（隧道把流量带回 master）。
+> 2. **暴露到网卡（快但别留公网）**：master 上改用 `kubectl port-forward --address 0.0.0.0 -n kubernetes-dashboard svc/kubernetes-dashboard-kong-proxy 8443:443`，本机浏览器开 `https://<master可达IP>:8443`。仅学习/内网用，用完即关。
+> 另外 `port-forward` 是前台进程，关终端即断，重连要重建；开之前确认终端还打印着 `Forwarding from 127.0.0.1:8443 -> 8443`。
 
 #### ③ 创建登录账号（最小权限优先）
 
@@ -485,7 +494,108 @@ kubectl -n kubernetes-dashboard create token admin-user
 
 左侧菜单：Overview / Nodes / Workloads / Config / Services。**可视化看资源、快速排障可以，日常操作还是 kubectl 为主**——Dashboard 一律走 port-forward 或带鉴权的 Ingress，**不要 NodePort 裸暴露公网**。
 
-### 3.6 小结
+#### ⑥ 循环重启实例：kong CrashLoopBackOff（Exit 137 = OOM）
+
+装完 Dashboard 后 `kubernetes-dashboard-kong` 反复重启（`RESTARTS` 一路涨到 7~9、`CrashLoopBackOff`），其余 pod 都 Running。这不是启动抖动，**真 OOM 死循环**：
+
+```text
+# kubectl describe pod -n kubernetes-dashboard kubernetes-dashboard-kong-xxxxx
+State:     Waiting / CrashLoopBackOff
+Last State: Terminated, Reason: Error, Exit Code: 137   ← 137 = SIGKILL = 内存超限被杀
+QoS Class: BestEffort                                    ← chart 没给 kong 设任何内存 requests/limits
+Events:    Readiness/Liveness probe failed: dial tcp :8100: connection refused  ← 被杀前没绑端口，是结果不是原因
+```
+
+> **根因纠偏**：`kubeadm`/Helm 装的 Dashboard chart 里 **kong 模板根本不消费 `resources` 值**（values.yaml 的 `kong:` 块无 `resources` 键，template 也不引用）。所以 `helm --set kong.resources.requests.memory=...` 会被**静默忽略**，kong 永远是 `BestEffort`；节点一有内存压力，kubelet 的 OOM-killer 第一个宰它。`--previous` 日志里 kong 启动干净（worker 正常起来）是迷惑项——它撑到加载完配置后才被 OOM 杀，日志自然看不出退出原因，必须看 `describe` 的 `Exit Code`。
+
+**修法（直接 patch 活对象，不依赖 helm value 路径）**：
+
+```bash
+# 给 kong 的 proxy 容器设保底内存 → 变 Burstable QoS，调度器预留 256Mi，不再被当 BestEffort 宰
+# ⚠️ kubectl 该子命令的容器选择器是 -c / --containers（复数），写 --container 会报 unknown flag
+kubectl -n kubernetes-dashboard set resources deployment/kubernetes-dashboard-kong \
+  -c proxy \
+  --requests=memory=256Mi --limits=memory=512Mi
+
+kubectl -n kubernetes-dashboard rollout status deployment/kubernetes-dashboard-kong -w
+kubectl get pods -n kubernetes-dashboard   # kong 应变 1/1、RESTARTS 不再涨 → 去 https://localhost:8443 用 token 登录
+```
+
+> **512Mi 仍崩** = 上限太紧被自己 cgroup 杀，limit 调到 `1Gi`：`--limits=memory=1Gi`。
+> **还崩且节点 `free -h` 几乎满 / `MemoryPressure=True`** = 节点（你这是 2C2G 小节点）真没内存，不是 kong 的锅：腾别的 Pod 或给节点加内存，或 `kubectl cordon <node>` 后删 kong pod 让它调度到有内存的节点。
+
+**持久性提醒**：`helm upgrade` 会按 chart 重写 Deployment、把这层 `resources` 冲掉。重跑 `helm upgrade` 后记得再 `set resources` 一次；要永久生效得改 chart 模板或写 `kubectl patch` 兜底（学习集群直接 set 即可）。
+
+#### ⑦ 登录成功验证（页面要点）
+
+按上面步骤走通后，浏览器打开 `https://localhost:8443`（自签证书告警点继续），粘贴 SA token 即可进入 Dashboard：
+
+- URL 形如：`https://localhost:8443/#/workloads?namespace=default`
+- 首次登录默认在 **default namespace 的 Workloads 页**，会显示 **"There is nothing to display here"**——这是正常的，因为 `default` 命名空间下还没有任何 Deployment / Pod。
+- 想看到东西：顶部 namespace 下拉框切到 **kube-system**，即可看到 calico-node、CoreDNS、Dashboard 各组件 Pod。
+- 左侧菜单：Overview / Nodes / Workloads / Config Maps / Secrets / Services / Ingresses 等，Nodes 页应能列出 3 个节点且状态 Ready。
+- 界面语言跟随浏览器 locale，中文浏览器会显示中文。
+
+> **到这里，Dashboard 链路才算真正闭环**：Helm 部署 → kong OOM 修复（可选）→ SSH 本地转发/HTTPS → token 登录 → 看到 Workloads 页面。
+
+### 3.6 k9s 终端 TUI（可视化辅助工具）
+
+> Dashboard 网页适合一次性可视化查看，**日常巡检 / 排障 / 看日志 / 临时定位**用 k9s 更顺手：纯终端 TUI、无需端口转发、键盘流操作。**但 k9s 只是辅助工具**——后续实操以 **kubectl + 声明式 yaml 为主**（生产推荐用法，见 §一.1）；创建 / 变更一律 `kubectl apply -f`，k9s 用来看状态、翻日志、临时定位，不拿它做创建与变更。
+
+#### ① 安装（已实测 v0.51.0）
+
+k9s 是单二进制，下载解包即可，无需包管理器：
+
+```bash
+# 方式A：节点能直连 GitHub（拉最新）
+curl -LO https://github.com/derailed/k9s/releases/latest/download/k9s_Linux_x86_64.tar.gz
+tar xzf k9s_Linux_x86_64.tar.gz
+install -m 0755 k9s /usr/local/bin/k9s
+k9s version            # 验证，应输出 v0.51.x
+
+# 方式B：节点拉不动 GitHub → 本机(Windows/Mac)下好 tarball，scp/sftp 过去再解包
+#   （本次三节点即用此法：本机下 tarball → SFTP 到各节点 → 解包 install）
+```
+
+三节点（master01 `192.168.128.10` / node1 `192.168.128.11` / node2 `192.168.128.12`）均装到 `/usr/local/bin/k9s`，版本一致 **v0.51.0**。
+
+#### ② 启动
+
+```bash
+k9s                 # 读 $KUBECONFIG（或 ~/.kube/config）进 TUI；默认显示当前 context 的 pods
+k9s --readonly      # 只读模式，禁写操作，生产 / 演示防误删
+k9s -n kube-system  # 直接进入指定 namespace 视图
+k9s -c node         # 启动即停在 node 视图
+```
+
+#### ③ 常用快捷键速查
+
+| 场景 | 按键 | 说明 |
+| --- | --- | --- |
+| 帮助 | `?` | 当前视图帮助，`esc` 退出 |
+| 退出 | `ctrl+c` / `q` | 逐级退出；根视图再 `q` 退出 k9s |
+| 命令模式 | `:` | 输入资源名跳转，如 `:pod` `:svc` `:deploy` `:node` `:ns` `:cm` `:secret` `:ctx` |
+| 返回 pods 根视图 | `0` | 任意视图按 `0` 回 pod 列表 |
+| 查看 YAML | `d` | describe（等同 `kubectl describe`） |
+| 查看日志 | `l` | 容器日志（`kubectl logs -f`） |
+| 进容器 shell | `s` | exec 进容器 |
+| 编辑 | `e` | 就地 edit，改完 `:wq` 应用 |
+| 删除 | `ctrl+d` | 删资源，弹确认 |
+| 杀 Pod（重启） | `ctrl+k` | 删单个 Pod，Deployment 会重建 |
+| 复制 YAML | `y` | 复制到系统剪贴板 |
+| 过滤 | `/` | 按名字实时过滤列表 |
+| 切换 context | `:ctx` | 多集群 / 多 context 时切换 |
+
+> **高频流**：`:node` 看节点状态 → 选中异常节点 `d` 看详情 → `:pod` 过滤 crashloop 的 pod → `l` 看日志 → `ctrl+k` 重启试一下。
+
+#### ④ 踩坑
+
+> 1. **k9s 要真实 TTY**：只能在 SSH 真实终端（FinalShell / `ssh` 命令）里跑；非交互 / 管道里起不来。
+> 2. **node 上跑 k9s 需先有 kubeconfig**：k9s 和 kubectl 一样读 `$KUBECONFIG`。node 默认没有 admin.conf，直接 `k9s` 会连 `localhost:8080` 被拒（同 §3.5 ③ kubeconfig 缺失坑）。解决：从 master `scp ~/.kube/config root@<node>:/root/.kube/config`，或 `export KUBECONFIG=/path/to/config` 指一份能连 `master:6443` 的配置。**日常在 master 上跑 k9s 最省事**（admin.conf 已就位）。
+> 3. **默认可写**：`ctrl+d` 真删资源。生产 / 演示用 `k9s --readonly` 防误删；新手先在 master 用只读模式练手。
+> 4. **多 context**：`kubectl config get-contexts` 看有哪些；k9s 里 `:ctx` 切换。
+
+### 3.7 小结
 
 > **整体链路**：kubeadm 装集群 = 基础环境（关 swap/开桥接）→ 装三件套 → 拉取镜像 → master init + 装 CNI → node join → 验证全 Ready。
 >
@@ -515,7 +625,7 @@ kubectl run mynginx --image=nginx
 kubectl delete pod mynginx
 ```
 
-### yaml 基本语法（会写清单就够）
+### yaml 基本语法（只需要足够编写清单）
 
 严格要求：
 
@@ -615,8 +725,8 @@ Pod 是 K8s 的**最小部署单元**（不是容器！）。一个 Pod 里装 1
 
 按管理方式分两类：
 
-- **自主式 Pod**：直接创建的裸 Pod，`kubectl run` 出来的。**Pod 挂了没人管，不会自愈**，生产不建议使用。
-- **控制器管理的 Pod**：由 Deployment/StatefulSet 等控制器创建，挂掉会自动重建。**生产一律用控制器**。
+- **自主式 Pod**：直接创建的裸 Pod，`kubectl run` 出来的。**Pod 挂了无监管，不会自愈**，生产不建议使用。
+- **控制器管理的 Pod**：由 Deployment/StatefulSet 等控制器创建，挂掉会自动重建。**生产请一律用控制器**。
 
 ```bash
 kubectl run mynginx --image=nginx          # 快速验证（自主式）
@@ -1029,9 +1139,258 @@ kubectl rollout resume deployment/my-dep
 
 ### Deployment 小结
 
-> **一句话**：Deployment = 副本管理（ReplicaSet）+ 版本管理（滚动更新/回滚）双层封装，无状态应用的默认选择。
->   
+> **总地说**：Deployment = 副本管理（ReplicaSet）+ 版本管理（滚动更新/回滚）双层封装，无状态应用的默认选择。
+>
 > 有状态（数据库类 DBMS）别硬 Deployment，使用和性能有相当的困难，进阶专题的 StatefulSet 再聊。
+
+### 4.6 实战：从零部署一个生产级 web 应用（P0 主线）
+
+> **铁律（亲测）**：**写 yaml 文件（`vi xxx.yaml` + `kubectl apply -f`）比 `kubectl apply -f - <<'EOF'` 管道容错大得多**。同一套 ResourceQuota，第一次用 heredoc 敲出了 `ResourceQuote`（少个 a）、`metadate:`（多打 t）、缩进错位，直接 `yaml: line 5: could not find expected ':'`；改成落地成 `pod.yaml` 用 `vi` 写、再 `apply -f pod.yaml`，一次过不行也易于复现。heredoc 在终端里没有语法高亮、没有缩进辅助，YAML 这种**缩进即语义**的格式极易翻车。**凡正式清单一律落文件，heredoc 只用于超短的一次性验证。**
+
+本实战覆盖：Namespace+配额 → ConfigMap → Deployment（3 副本+锁 tag+探针+限额）→ Service（ClusterIP 验证服务发现 → NodePort 对外）→ 滚动更新/回滚。全程在 `prod` 命名空间，quota 强制治理。
+
+#### ① 命名空间 + ResourceQuota（资源治理）
+
+```yaml
+# quota.yaml
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: prod-quota
+  namespace: prod
+spec:
+  hard:
+    requests.cpu: "1"
+    requests.memory: 1Gi
+    limits.cpu: "2"
+    limits.memory: 2Gi
+    pods: "10"
+```
+```bash
+kubectl create namespace prod
+kubectl apply -f quota.yaml
+```
+
+> **坑（必踩）**：设了 ResourceQuota 后，`prod` 里**每个 Pod 都必须显式写 `requests`+`limits` 四项**，否则创建直接 `Forbidden: failed quota: prod-quota: must specify limits.cpu for ...`。
+>
+> 这不是 bug，是治理——正好强制养成给资源的习惯（呼应 §3.5 ⑥ kong 因 BestEffort 被 OOM 宰的反面）。
+
+#### ② ConfigMap（配置外置）
+
+```yaml
+# configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: web-config
+  namespace: prod
+data:
+  APP_VERSION: "v1"
+  APP_ENV: "production"
+```
+```bash
+kubectl apply -f configmap.yaml
+```
+
+#### ③ Deployment（3 副本 + 锁精确 tag + 探针 + 限额）
+
+```yaml
+# deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web
+  namespace: prod
+  labels: {app: web}
+spec:
+  replicas: 3
+  revisionHistoryLimit: 5
+  strategy:
+    type: RollingUpdate
+    rollingUpdate: {maxSurge: 1, maxUnavailable: 1}
+  selector:
+    matchLabels: {app: web}
+  template:
+    metadata:
+      labels: {app: web}
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.27.2-alpine      # 锁精确 tag，绝不用 latest（§4.x 镜像策略）
+        ports: [{containerPort: 80}]
+        envFrom:
+        - configMapRef: {name: web-config}
+        resources:
+          requests: {cpu: 50m, memory: 64Mi}
+          limits:   {cpu: 200m, memory: 128Mi}
+        readinessProbe:
+          httpGet: {path: /, port: 80}
+          initialDelaySeconds: 3
+          periodSeconds: 5
+        livenessProbe:
+          httpGet: {path: /, port: 80}
+          initialDelaySeconds: 10
+          periodSeconds: 10
+```
+```bash
+kubectl apply -f deployment.yaml
+kubectl -n prod get pods -o wide -w     # 等 3 副本跨 node01/node02 全 1/1 Running
+```
+
+#### ④ Service：ClusterIP 验证服务发现 → NodePort 对外
+
+```yaml
+# clusterip.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: web
+  namespace: prod
+spec:
+  selector: {app: web}
+  ports: [{port: 80, targetPort: 80}]
+  type: ClusterIP
+```
+```bash
+kubectl apply -f clusterip.yaml
+kubectl -n prod get svc web           # 拿到 ClusterIP（如 10.101.158.119）
+```
+
+**验证服务发现**（用声明式 Pod + exec，见下方②）：
+
+```bash
+# 先起一个常驻 pod（sleep），等 Running 再 exec 进去 curl
+kubectl -n prod apply -f - <<'EOF'
+apiVersion: v1
+kind: Pod
+metadata: {name: curlpod, namespace: prod}
+spec:
+  restartPolicy: Never
+  containers:
+  - name: curl
+    image: curlimages/curl
+    command: ["sh","-c","sleep 9999"]
+    resources:              # 别忘了，prod 有 quota 强制
+      requests: {cpu: 50m, memory: 64Mi}
+      limits:   {cpu: 100m, memory: 128Mi}
+EOF
+kubectl -n prod wait --for=condition=Ready pod/curlpod --timeout=120s
+kubectl -n prod exec curlpod -- curl -s http://web.prod.svc.cluster.local
+# 返回 nginx 欢迎页 HTML = 服务发现通 ✅
+kubectl -n prod delete pod curlpod
+```
+
+**对外暴露（NodePort）**：
+```bash
+kubectl -n prod patch svc web -p '{"spec":{"type":"NodePort","ports":[{"port":80,"targetPort":80,"nodePort":30080}]}}'
+curl http://192.168.128.10:30080      # 任一节点 IP 都能访问（防火墙放行 30080）
+```
+
+#### ⑤ 滚动更新 & 回滚（实战高潮）
+
+```bash
+kubectl -n prod set image deployment/web nginx=nginx:1.27.3-alpine
+kubectl -n prod rollout status deployment/web      # 盯滚动替换
+kubectl -n prod rollout history deployment/web     # 看版本历史
+kubectl -n prod rollout undo deployment/web        # 回滚到上一版
+kubectl -n prod rollout status deployment/web
+```
+> k9s 里 `:rs` 能清楚看到**旧 ReplicaSet 缩到 0、新 ReplicaSet 升到 3**——这就是滚动更新的本质（呼应 §4.5 纠偏）。
+
+#### ⑥ 常见问题实录（P0 全程亲历）
+
+| 现象 | 根因 | 修法 |
+| --- | --- | --- |
+| `yaml: line 5: could not find expected ':'` | heredoc 里手敲 YAML，缩进/拼写错，建议大家多检查（`ResourceQuote`/`metadate`） | **落文件 `vi xxx.yaml` 再 `apply -f`**，有高亮不易错 |
+| `pods "curlpod" is forbidden: failed quota ... must specify limits.cpu` | prod 有 ResourceQuota，临时 pod 没写 requests/limits | 给临时 pod 也补 resources（或丢 default ns 跑） |
+| `error: unknown flag: --requests` | 本集群 kubectl 的 `run` 子命令不认 `--requests`/`--limits`（版本不一致） | 改用声明式 Pod manifest 写 resources |
+| `container is waiting to start: ContainerCreating` 后 `logs` 空、`delete` 误删 | 镜像还在拉取（节点拉 Docker Hub 慢），没 Running 就去看日志/删 | 先 `kubectl get pod -w` 等 Running/Completed；用 sleep-pod+exec 法最稳 |
+| `curl http://192.168.128.10:30080` 不通 | 节点防火墙/安全组没放行 30080 | 放行该端口，或直接 port-forward |
+
+> **贯穿结论**：
+>
+> ① 镜像永远锁 tag/digest，别碰 `latest`；
+>
+> ② Pod 必须给 requests/limits，别跑 BestEffort；
+>
+> ③ 滚动更新=新 RS 升旧 RS 降，回滚=`rollout undo` 切回旧 RS。
+
+#### ⑦ 接 Metrics-Server + HPA（自动扩缩容实战）
+
+> 前置：`web` 已在 §4.6 ③ 锁了 `requests.cpu`。**HPA 算利用率 = 实际 CPU / `requests.cpu`，Pod 没有 `requests.cpu` 就挂不上 HPA / 一直 `unknown`**——这正是 §4.6 强制写 resources 的另一重好处。
+
+**1）装 metrics-server（集群指标源）**
+
+```bash
+# 官方一键清单（latest 指向当前稳定版）
+kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+```
+
+> **kubeadm 自签证书固定雷**：metrics-server 默认用 HTTPS 拉 kubelet 的 10250 端口指标，但 kubeadm 给 kubelet 签的证书不在它的信任链里 → 日志 `x509: certificate signed by unknown authority` / `Scrape failed` → `kubectl top` 直接 `Metrics API not available`。
+> **修法**：给 metrics-server 容器加 `--kubelet-insecure-tls` 跳过校验（自签/学习环境用；生产应配真证书或用 `--kubelet-certificate-authority`）。
+
+```bash
+# JSON patch 给第 0 个容器的 args 追加 flag，不必改原 yaml 重新 apply
+kubectl -n kube-system patch deployment metrics-server --type=json \
+  -p='[{"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--kubelet-insecure-tls"}]'
+```
+
+**2）为什么一装完 `kubectl top` 就报错？——时序陷阱**
+
+```bash
+kubectl -n kube-system get pods -l k8s-app=metrics-server   # 先等 Running，1/1 Ready
+kubectl get apiservice v1beta1.metrics.k8s.io               # 再等 AVAILABLE=True
+kubectl top nodes && kubectl top pods -n prod               # 此时才通 ✅
+```
+
+> patch 一打，metrics-server Pod 立刻滚动重启（旧 Pod Terminating、新 Pod 拉镜像+启动），同时 API 聚合层 `v1beta1.metrics.k8s.io` 还是 `False`。**Pod 没 Ready、APIService 没 Available 之前跑 `kubectl top`，必然 `Metrics API not available`**——不是没装好，是手太快。等 30s~1min 再来就通。
+
+**3）建 HPA（CPU 利用率驱动）**
+
+```bash
+kubectl -n prod autoscale deployment web --cpu-percent=60 --min=3 --max=6
+# horizontalpodautoscaler.autoscaling/web autoscaled
+kubectl -n prod get hpa
+# NAME   REFERENCE        TARGETS     MINPODS   MAXPODS   REPLICAS   AGE
+# web    Deployment/web   0%/60%      3         6         3          1m
+```
+
+> **注意 1（手太快同款坑）**：metrics 还没就绪就建 HPA，`TARGETS` 会先显示 `<unknown>/60%`，不报错只是暂不生效；等 metrics 通了自动变 `0%/60%`。
+> **注意 2（想看它真扩容）**：当前 `web` 就 3 副本、nginx 几乎零 CPU，利用率 0% 远没到 60% 阈值，HPA 只会维持 min=3。要肉眼看到扩容得制造负载：
+>
+> ```bash
+> kubectl -n prod run stress --image=busybox --command -- sh -c "while true; do wget -q -O- http://web.prod.svc.cluster.local; done"
+> # 1~2 分钟后 kubectl -n prod get hpa / get pods，副本会往 6 涨
+> kubectl -n prod delete pod stress
+> ```
+> **注意 3（声明式的好处）**：`kubectl autoscale` 是命令式、不落 yaml。要纳入版本管理：
+>
+> ```bash
+> kubectl -n prod autoscale deployment web --cpu-percent=60 --min=3 --max=6 \
+> --dry-run=client -o yaml > hpa-web.yaml    # 导出后 apply -f 进 Git
+> ```
+
+**4）滚动更新 / 回滚的 revision 真相（实测补充 §4.5）**
+
+```bash
+kubectl -n prod set image deployment/web nginx=nginx:1.27.3-alpine
+kubectl -n prod rollout status deployment/web     # 2/3 new → 1 old pending → 2/3 available → done
+kubectl -n prod rollout history deployment/web
+# REVISION  CHANGE-CAUSE
+# 1         <none>
+# 2         <none>
+kubectl -n prod rollout undo deployment/web        # 回滚到上一版
+```
+
+> **实测两个反直觉点**：
+> - **CHANGE-CAUSE 全是 `<none>`**：`set image` / `apply` 默认**不记录**变更原因（`--record` 在 1.21+ 已废弃）。回滚能成功，但历史看不出每版更改内容。要可回溯，给 Deployment 加注解：
+>   
+>   ```bash
+>   kubectl -n prod annotate deployment/web \
+>     kubernetes.io/change-cause="upgrade nginx 1.27.2→1.27.3"
+>   # 或在 yaml 里写 metadata.annotations.kubernetes.io/change-cause
+>   ```
+> - **`rollout undo` 会生成新 revision**：回滚后历史变成 1 / 2 / 3（第 3 版 = 回滚后的状态），不是"回到第 1 版"就只剩 1 条。所以 revision 号只增不减，旧 RS 也保留——这便是能反复回滚的底气。
 
 ## 5. Service
 
@@ -2853,6 +3212,7 @@ deploy:
 kubeadm join k8s-master:6443 --token:xyjsuv.hza9u9yu9xzkp6lc
 unknown flag: --token:xyjsuv.hza9u9yu9xzkp6lc
 ```
+
 - **根因**：用了冒号 `--token:值`。kubeadm 用 pflag，只认 `--flag=值` 或 `--flag 值`，冒号会被当成 flag 名的一部分，整段变成「未知 flag」。
 - **修**：`--token xyjsuv...`（空格）或 `--token=xyjsuv...`（等号）。**别手敲 join 命令**，直接 `kubeadm token create --print-join-command` 复制，从根上避免笔误。
 
@@ -2863,6 +3223,7 @@ discovery.bootstrapToken.caCertHashes: Invalid value: "": using token-based
 discovery without caCertHashes can be unsafe. Set unsafeSkipCAVerification as
 true ... or pass --discovery-token-unsafe-skip-ca-verification flag to continue
 ```
+
 - **根因**：token 发现机制强制要求 CA 指纹，否则怕连到伪造的 apiserver。
 - **修**：补 `--discovery-token-ca-cert-hash sha256:<hash>`（master 上 `openssl x509 -pubkey -in /etc/kubernetes/pki/ca.crt | openssl rsa -pubin -outform der 2>/dev/null | openssl dgst -sha256 -hex` 取，见 §A）。**别用 `--discovery-token-unsafe-skip-ca-verification`**。token 默认 24h 过期，过期先 `kubeadm token create --print-join-command` 拿新的（自带 hash）。
 
@@ -2873,6 +3234,7 @@ couldn't get current server API group list: Get "http://localhost:8080/api?timeo
 dial tcp 127.0.0.1:8080: connect: connection refused
 The connection to the server localhost:8080 was refused - did you specify the right host or port?
 ```
+
 - **根因**：kubectl 完全没找到 kubeconfig（没 `KUBECONFIG`、没 `~/.kube/config`），退化去连老默认端口 8080。**不是 apiserver 挂，是凭证没就位**——若 kubeconfig 在但 apiserver 真挂，会去连真实的 `:6443` 超时，而不是 8080 refused。
 - **修**（master 上，kubeadm init 末尾的标准动作）：
 
@@ -2882,6 +3244,7 @@ cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
 chown $(id -u):$(id -g) $HOME/.kube/config
 # 临时生效也可：export KUBECONFIG=/etc/kubernetes/admin.conf
 ```
+
 先 `ls -l /etc/kubernetes/admin.conf` 确认存在；不存在 = `kubeadm init` 没跑完，不是 kubeconfig 问题。
 
 **闭环验证**：三坑排完，`kubectl get nodes` 出结果（3 节点 `NotReady` 是预期内——CNI 网络插件还没装，装完才变 `Ready`）：

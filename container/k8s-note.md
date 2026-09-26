@@ -25,7 +25,7 @@
 3. Pod
 4. Deployment（多副本 / 扩缩容 / 自愈 / 滚动更新 / 版本回退 / 生产级 web 部署实战）
 5. Service（ClusterIP / NodePort / LoadBalancer / ExternalName / kube-proxy 两模式）
-6. Ingress（安装 / 使用 / 域名访问 / 路径重写 / 流量限制）
+6. Ingress 与 Gateway API（Service L4 vs Gateway L7 / ingress-nginx 退役 / NGF hands-on 实测 / 三种实现对比 / 踩坑）
 7. 存储抽象（环境准备 / 原生挂载 / PV\&PVC / StorageClass / ConfigMap / Secret）
 8. 集群调度（调度过程 / 指定节点 / 亲和性 / 污点容忍）
 9. kubectl 排障工具箱（命令总表 / 三板斧 / 症状速查）
@@ -61,15 +61,15 @@ Kubernetes 这个词来自希腊语，意思是「舵手」或「领航员」，
 
 ### K8s 能干什么
 
-| 能力              | 说明                                       |
-| --------------- | ---------------------------------------- |
-| **自动装箱**        | 按 CPU/内存请求自动把容器调度到合适的节点                  |
-| **自愈**          | 容器挂了自动重启、节点挂了自动把 Pod 挪到别的节点重建            |
-| **水平扩展**        | 按 CPU 等指标自动扩缩副本数（HPA，见进阶专题）              |
+| 能力                    | 说明                                                         |
+| ----------------------- | ------------------------------------------------------------ |
+| **自动装箱**            | 按 CPU/内存请求自动把容器调度到合适的节点                    |
+| **自愈**                | 容器挂了自动重启、节点挂了自动把 Pod 调度到别的节点重建      |
+| **水平扩展**            | 按 CPU 等指标自动扩缩副本数（HPA，见进阶专题）               |
 | **服务发现 & 负载均衡** | 用 Service 名称访问一组 Pod，自带负载均衡，不用自己 nginx分流 |
-| **自动发布 / 回滚**   | 滚动更新不停机，发布炸了轻松命令回滚                       |
-| **密钥和配置管理**     | ConfigMap / Secret 热更新配置，不用重新打镜像         |
-| **存储编排**        | 本地盘、NFS、云盘统一抽象成 PV，随 Pod 挂载              |
+| **自动发布 / 回滚**     | 滚动更新不停机，发布炸了轻松命令回滚                         |
+| **密钥和配置管理**      | ConfigMap / Secret 热更新配置，不用重新打镜像                |
+| **存储编排**            | 本地盘、NFS、云盘统一抽象成 PV，随 Pod 挂载                  |
 
 ### 和 Swarm 的关系（快速对齐）
 
@@ -90,20 +90,20 @@ Kubernetes 这个词来自希腊语，意思是「舵手」或「领航员」，
 
 K8s 是典型的 **Master-Worker** 架构 + **声明式 API** + **控制循环**：
 
-- **声明式**：不必告诉它「启动容器」，只是提交一份期望状态——「我要 3 个 nginx 副本」。至于怎么达成、挂了怎么补，K8s 自己想办法。
-- **控制循环（Reconcile）**：所有控制器都在无限循环干一件事：**对比期望状态和实际状态，有偏差就调谐**。这是 K8s 一切自愈能力的根源。
+- **声明式**：不必告知「启动容器」，只提交一份期望状态——「我要 3 个 nginx 副本」。怎么达成、挂了怎么补，K8s 内部自行编排处置。
+- **控制循环（Reconcile）**：所有控制器都在无限循环：**对比期望状态和实际状态，存在偏差进行调谐**。这是 K8s 一切自愈能力的根源。
 
 ```
-kubectl apply（提交期望状态：我要 3 个 nginx）
+kubectl apply（提交期望状态： 3个 nginx）
         │
         ▼
    kube-apiserver ──写入──► etcd（集群唯一数据源）
         │
         │ watch（监听变化）
         ▼
-kube-controller-manager ──发现只有 0 个副本，创建 3 个 Pod 对象（还没落地）
+kube-controller-manager ──发现只有 0 个副本，创建 3 个 Pod 对象（还未落地）
         │
-kube-scheduler ──挑出没绑定节点的 Pod，选好节点，写回绑定关系
+kube-scheduler ──择取未绑定节点的 Pod，选定节点，写回绑定关系
         │
         ▼
 目标节点 kubelet ──看到「分给我的 Pod」，调 containerd 真正把容器跑起来
@@ -113,9 +113,9 @@ kube-scheduler ──挑出没绑定节点的 Pod，选好节点，写回绑定�
 
 #### 2.2.1 控制平面组件（Control Plane Components）
 
-集群的大脑，管决策不管干活。**生产推荐奇数台（3/5/7），副本数 ≥3**——1 台单点，2 台脑裂，和 Swarm 的 manager 相似。
+集群的大脑，只管决策。**生产推荐奇数台（3/5/7），副本数 ≥3**——1 台单点，2 台脑裂，和 Swarm 的 manager 相似。
 
-先给一份面试口诀版：
+简单速记：
 
 | 组件                           | 一句话口诀                       |
 | ---------------------------- | --------------------------- |
@@ -137,20 +137,20 @@ kube-scheduler ──挑出没绑定节点的 Pod，选好节点，写回绑定�
 
 工作机上的组件：
 
-1. **kubelet**：运行在每个节点上的节点代理。直接跟容器引擎（containerd/docker）交互实现**容器生命周期管理**——创建、启动、监控、销毁，同时把节点和 Pod 状态上报给 apiserver。Scheduler 只是指挥，**真正落地干活的永远是 kubelet**。
-2. **kube-proxy**：每个节点上的网络代理。监听 Service 和 Endpoint 变化，把规则写入 **iptables / ipvs**，实现 Service 的转发和负载均衡——「访问 Service IP」可行。
-3. **容器运行时**：containerd（新标配）或 docker，事实上跑容器的。
+1. **kubelet**：运行在每个节点上的节点代理。直接跟容器引擎（containerd/docker）交互实现**容器生命周期管理**——创建、启动、监控、销毁，同时把节点和 Pod 状态上报给 apiserver。Scheduler 只是指挥，**落地工作的永远是 kubelet**。
+2. **kube-proxy**：每个节点上的网络代理。监听 Service 和 Endpoint 变化，把规则写入 **iptables / ipvs**，实现 Service 的转发和负载均衡——令「访问 Service IP」可行。
+3. **容器运行时**：containerd（新标配）或 docker，事实上运行容器的。
 
 #### 2.2.3 生态组件（第三方，了解即可）
 
-| 组件                     | 作用                                                            |
-| ---------------------- | ------------------------------------------------------------- |
-| **CoreDNS**            | 为集群中的 Service 创建域名 → IP 解析，`svc名.命名空间.svc.cluster.local` 直接访问 |
-| **Dashboard**          | 给 K8s 集群提供 B/S 结构的可视化访问体系                                     |
-| **Ingress Controller** | 官方 Service 只能四层代理，Ingress 实现**七层**（HTTP 域名/路径）代理              |
-| **Federation**         | 跨多个 K8s 集群统一管理，项目基本废弃，知道概念即可                                  |
-| **Prometheus**         | 集群监控（指标采集 + 告警 + Grafana 可视化），云原生监控标准                         |
-| **ELK / EFK**          | 集群日志统一收集、检索、分析平台                                              |
+| 组件                   | 作用                                                         |
+| ---------------------- | ------------------------------------------------------------ |
+| **CoreDNS**            | 为集群中的 Service 创建域名 → IP 解析，经`svc名.命名空间.svc.cluster.local` 直接访问 |
+| **Dashboard**          | 为 K8s 集群提供 B/S 结构的可视化访问体系                     |
+| **Ingress Controller** | 官方 Service 只能四层代理，在Ingress 实现**七层**（HTTP 域名/路径）代理 |
+| **Federation**         | 跨多个 K8s 集群统一管理，项目基本废弃，了解概念即可          |
+| **Prometheus**         | 集群监控（指标采集 + 告警 + Grafana 可视化），云原生监控标准 |
+| **ELK / EFK**          | 集群日志统一收集、检索、分析平台                             |
 
 ### 2.3 Node 深入：状态、心跳与节点管理
 
@@ -188,7 +188,7 @@ Node 是集群中的工作机器（物理机或虚拟机），是 Pod 实际运�
 
 ## 3. kubeadm 创建集群
 
-kubeadm 是官方提供的集群引导工具：把「装一套 K8s」从手工几十步压缩成 `init` + `join` 两条命令。**它只负责控制面组件拉起，网络组件、存储、监控都得自己安装**。
+kubeadm 是官方提供的集群引导工具：把「装一套 K8s」从手工几十步压缩成 `init` + `join` 两条命令。**但它只负责控制面组件拉起，网络组件、存储、监控都得自己安装**。
 
 环境约定（三台机器示例）：
 
@@ -228,7 +228,7 @@ EOF
 sudo sysctl --system
 ```
 
-> **踩坑**：swap 忘了关是新手第一大坑——kubelet 报错 `running with swap on is not supported`，一堆人卡半天。第二条坑是桥接流量没开，表现为跨节点 Pod 不通、CoreDNS 起不来。
+> **注意**：swap 忘了关是新手第一大坑——kubelet 报错 `running with swap on is not supported`，一堆人卡半天。第二条坑是桥接流量没开，表现为跨节点 Pod 不通、CoreDNS 起不来。
 
 #### 3.1.2 安装 kubelet、kubeadm、kubectl（所有机器）
 
@@ -312,7 +312,12 @@ kubeadm init --config=kubeadm-config.yaml --experimental-upload-certs | tee kube
 
 成功后输出如下，**把 join 命令复制存好**：
 
-```text
+*值得一提的是，官方有推荐的节点添加命令生成功能
+kubeadm token create --print-join-command*
+
+*添加第二maste节点同样存在，需要的可以自行查找实验*
+
+```bash
 Your Kubernetes control-plane has initialized successfully!
 
 Then you can join any number of worker nodes by running the following on each as root:
@@ -347,7 +352,7 @@ kubectl get pods -n kube-system -w
 
 > **注意**：Calico 默认 Pod 网段和 kubeadm-config.yaml 里的 `podSubnet` 必须一致（calico.yaml 里的 `CALICO_IPV4POOL_CIDR`），不一致跨节点不通——这是第二常见的「装完集群 Pod 全 Pending」根因。用 Flannel 的话对应 `10.244.0.0/16`。
 
-### 3.3 加入 node 节点（每个 node 执行）
+### 3.3 加入 node 节点（各 node 执行）
 
 把 init 输出的 join 命令原样贴到两台 node 上：
 
@@ -448,9 +453,10 @@ kubectl -n kubernetes-dashboard port-forward svc/kubernetes-dashboard-kong-proxy
 > **莫套旧教程的 `kubectl edit svc kubernetes-dashboard ... type: NodePort`** —— v3 里 svc 名/结构已变，且 NodePort 裸暴露等于把 Dashboard 放公网（历史上有未授权访问大事故）。学习/showcase 用 port-forward 足够。
 
 > **⚠️ port-forward 的"不可达"陷阱（高频）**：`port-forward` 绑在**运行 kubectl 的那台机器的 127.0.0.1** 上。如果你 SSH 进 master（FinalShell 等）在 master 上跑 forward，它绑的是 **master 的 localhost:8443**，而你浏览器在**本机 Windows**——本机的 `localhost:8443` ≠ master 的 `localhost:8443`，没隧道必"不可达"。两种解法：
+>
 > 1. **SSH 本地端口转发（推荐）**：保持 master 上的 `port-forward` 在前台跑，在 FinalShell/SSH 客户端配一条**本地转发** `Windows localhost:8443 → master 127.0.0.1:8443`，然后本机浏览器开 `https://localhost:8443`（隧道把流量带回 master）。
-> 2. **暴露到网卡（快但别留公网）**：master 上改用 `kubectl port-forward --address 0.0.0.0 -n kubernetes-dashboard svc/kubernetes-dashboard-kong-proxy 8443:443`，本机浏览器开 `https://<master可达IP>:8443`。仅学习/内网用，用完即关。
-> 另外 `port-forward` 是前台进程，关终端即断，重连要重建；开之前确认终端还打印着 `Forwarding from 127.0.0.1:8443 -> 8443`。
+> 2. **暴露到网卡（快捷但勿留公网）**：master 上改用 `kubectl port-forward --address 0.0.0.0 -n kubernetes-dashboard svc/kubernetes-dashboard-kong-proxy 8443:443`，本机浏览器开 `https://<master可达IP>:8443`。仅学习/内网用，用完即关。  
+>    另外 `port-forward` 是前台进程，关终端即断，重连要重建；开之前确认终端还打印着 `Forwarding from 127.0.0.1:8443 -> 8443`。
 
 #### ③ 创建登录账号（最小权限优先）
 
@@ -488,11 +494,13 @@ kubectl -n kubernetes-dashboard create token admin-user
 # 复制输出的 token 贴到登录页
 ```
 
-> **1.24 起 SA 不再自动建带 token 的 Secret**，老教程的 `kubectl get secret ... -o go-template` 解 token 会查空。直接用 `create token` 签发；token 默认 1h 过期，长跑/定时加 `--duration=8760h`。
+> **1.24 起 SA 不再自动建带 token 的 Secret**，老教程的 `kubectl get secret ... -o go-template` 解 token 会查空。直接用 `create token` 签发；
+>
+> token 默认 1h 过期，长跑/定时加 `--duration=8760h`。
 
 #### ⑤ 界面与安全
 
-左侧菜单：Overview / Nodes / Workloads / Config / Services。**可视化看资源、快速排障可以，日常操作还是 kubectl 为主**——Dashboard 一律走 port-forward 或带鉴权的 Ingress，**不要 NodePort 裸暴露公网**。
+左侧菜单：Overview / Nodes / Workloads / Config / Services。**可视化看资源、快速排障可以，日常操作还是 kubectl 为主**——Dashboard 请一律走 port-forward 或带鉴权的 Ingress，**不要 NodePort 裸暴露公网**。
 
 #### ⑥ 循环重启实例：kong CrashLoopBackOff（Exit 137 = OOM）
 
@@ -521,7 +529,7 @@ kubectl -n kubernetes-dashboard rollout status deployment/kubernetes-dashboard-k
 kubectl get pods -n kubernetes-dashboard   # kong 应变 1/1、RESTARTS 不再涨 → 去 https://localhost:8443 用 token 登录
 ```
 
-> **512Mi 仍崩** = 上限太紧被自己 cgroup 杀，limit 调到 `1Gi`：`--limits=memory=1Gi`。
+> **512Mi 仍崩** = 上限太紧被自己 cgroup 杀，limit 调到 `1Gi`：`--limits=memory=1Gi`。  
 > **还崩且节点 `free -h` 几乎满 / `MemoryPressure=True`** = 节点（你这是 2C2G 小节点）真没内存，不是 kong 的锅：腾别的 Pod 或给节点加内存，或 `kubectl cordon <node>` 后删 kong pod 让它调度到有内存的节点。
 
 **持久性提醒**：`helm upgrade` 会按 chart 重写 Deployment、把这层 `resources` 冲掉。重跑 `helm upgrade` 后记得再 `set resources` 一次；要永久生效得改 chart 模板或写 `kubectl patch` 兜底（学习集群直接 set 即可）。
@@ -570,25 +578,25 @@ k9s -c node         # 启动即停在 node 视图
 
 #### ③ 常用快捷键速查
 
-| 场景 | 按键 | 说明 |
-| --- | --- | --- |
-| 帮助 | `?` | 当前视图帮助，`esc` 退出 |
-| 退出 | `ctrl+c` / `q` | 逐级退出；根视图再 `q` 退出 k9s |
-| 命令模式 | `:` | 输入资源名跳转，如 `:pod` `:svc` `:deploy` `:node` `:ns` `:cm` `:secret` `:ctx` |
-| 返回 pods 根视图 | `0` | 任意视图按 `0` 回 pod 列表 |
-| 查看 YAML | `d` | describe（等同 `kubectl describe`） |
-| 查看日志 | `l` | 容器日志（`kubectl logs -f`） |
-| 进容器 shell | `s` | exec 进容器 |
-| 编辑 | `e` | 就地 edit，改完 `:wq` 应用 |
-| 删除 | `ctrl+d` | 删资源，弹确认 |
-| 杀 Pod（重启） | `ctrl+k` | 删单个 Pod，Deployment 会重建 |
-| 复制 YAML | `y` | 复制到系统剪贴板 |
-| 过滤 | `/` | 按名字实时过滤列表 |
-| 切换 context | `:ctx` | 多集群 / 多 context 时切换 |
+| 场景          | 按键             | 说明                                                                     |
+| ----------- | -------------- | ---------------------------------------------------------------------- |
+| 帮助          | `?`            | 当前视图帮助，`esc` 退出                                                        |
+| 退出          | `ctrl+c` / `q` | 逐级退出；根视图再 `q` 退出 k9s                                                   |
+| 命令模式        | `:`            | 输入资源名跳转，如 `:pod` `:svc` `:deploy` `:node` `:ns` `:cm` `:secret` `:ctx` |
+| 返回 pods 根视图 | `0`            | 任意视图按 `0` 回 pod 列表                                                     |
+| 查看 YAML     | `d`            | describe（等同 `kubectl describe`）                                        |
+| 查看日志        | `l`            | 容器日志（`kubectl logs -f`）                                                |
+| 进容器 shell   | `s`            | exec 进容器                                                               |
+| 编辑          | `e`            | 就地 edit，改完 `:wq` 应用                                                    |
+| 删除          | `ctrl+d`       | 删资源，弹确认                                                                |
+| 杀 Pod（重启）   | `ctrl+k`       | 删单个 Pod，Deployment 会重建                                                 |
+| 复制 YAML     | `y`            | 复制到系统剪贴板                                                               |
+| 过滤          | `/`            | 按名字实时过滤列表                                                              |
+| 切换 context  | `:ctx`         | 多集群 / 多 context 时切换                                                    |
 
 > **高频流**：`:node` 看节点状态 → 选中异常节点 `d` 看详情 → `:pod` 过滤 crashloop 的 pod → `l` 看日志 → `ctrl+k` 重启试一下。
 
-#### ④ 踩坑
+#### ④ 注意
 
 > 1. **k9s 要真实 TTY**：只能在 SSH 真实终端（FinalShell / `ssh` 命令）里跑；非交互 / 管道里起不来。
 > 2. **node 上跑 k9s 需先有 kubeconfig**：k9s 和 kubectl 一样读 `$KUBECONFIG`。node 默认没有 admin.conf，直接 `k9s` 会连 `localhost:8080` 被拒（同 §3.5 ③ kubeconfig 缺失坑）。解决：从 master `scp ~/.kube/config root@<node>:/root/.kube/config`，或 `export KUBECONFIG=/path/to/config` 指一份能连 `master:6443` 的配置。**日常在 master 上跑 k9s 最省事**（admin.conf 已就位）。
@@ -599,7 +607,7 @@ k9s -c node         # 启动即停在 node 视图
 
 > **整体链路**：kubeadm 装集群 = 基础环境（关 swap/开桥接）→ 装三件套 → 拉取镜像 → master init + 装 CNI → node join → 验证全 Ready。
 >
-> 三个核心记住才不出大问题：
+> 核心问题：
 >
 > 1. **kubelet 装完起不来是正常的**，init/join 之后才会正常
 > 2. **网络组件（Calico/Flannel）不装，节点永远 NotReady**，且 CNI 网段要和 podSubnet 一致
@@ -663,7 +671,7 @@ containers:
   image: busybox
 ```
 
-两个补充点：
+补充：
 
 - **多资源同文件**：用 `---` 分隔，一个 yaml 管一组资源（本文 StatefulSet 示例里 Service + StatefulSet 就是这么写的）。
 - **带引号的字符串**：值「长得像数字/布尔」时要加引号（`version: "1.20"` 不加会按数字解析），普通字符串加不加都行，但要知道为什么加。
@@ -884,7 +892,7 @@ phase 太粗糙，排障时更常用**容器级三态**（`kubectl describe pod`
 
 #### 3.4.3 Init 容器
 
-主容器启动**前**跑完就退出的容器，做一次性初始化。三条铁律：
+主容器启动**前**跑完就退出的容器，做一次性初始化。有如下铁律：
 
 1. **串行执行**：多个 init 容器按声明顺序逐个跑，前一个成功才轮到下一个（和主容器并行启动完全相反）。
 2. **必须全部成功**主容器才会启动；失败的 init 容器按 Pod 的 `restartPolicy` 处理——Always/OnFailure 会重试，Never 则整个 Pod 直接 Failed。
@@ -934,7 +942,7 @@ spec:
 
 > startupProbe 是给慢启动应用兜底的：以前只能把 liveness 的 initialDelaySeconds 调得很大，但那样真崩溃也要等很久才发现；有了 startupProbe，`failureThreshold: 30 × periodSeconds: 10` = 允许慢跑 5 分钟，一旦判定启动完成，liveness 立刻用短周期接管。
 
-**三种检测方式**（每种探针任选一种）：
+**检测方式**（每种探针任选一种）：
 
 | 方式            | 原理                            | 适用                 |
 | ------------- | ----------------------------- | ------------------ |
@@ -1004,10 +1012,10 @@ containers:
         command: ["/bin/sh", "-c", "nginx -s quit; sleep 10"]
 ```
 
-两个关键差异必须记住：
+这里存在两个关键差异：
 
-1. **postStart 是异步的**：kubelet 发出事件后不等它执行完，钩子和主进程谁先跑赢不确定。要做「必须先于应用执行」的初始化，用 Init 容器，别用 postStart。
-2. **preStop 是同步的**：kubelet 等它执行完才发 SIGTERM。这是它最大的价值——**给「从 Service 摘除」留缓冲**：Endpoint 变更从 apiserver 传导到所有节点的 iptables 有延迟，摘除后立刻杀容器会漏掉在途请求。滚动更新偶发 502，优先检查是否没配 preStop sleep。
+1. **postStart 异步**：kubelet 发出事件后不等它执行完，钩子和主进程谁先跑赢不确定。要做「必须先于应用执行」的初始化，用 Init 容器，别用 postStart。
+2. **preStop 同步**：kubelet 等它执行完才发 SIGTERM。这是它最大的价值——**给「从 Service 摘除」留缓冲**：Endpoint 变更从 apiserver 传导到所有节点的 iptables 有延迟，摘除后立刻杀容器会漏掉在途请求。滚动更新偶发 502，优先检查是否没配 preStop sleep。
 
 > preStop 的耗时计入 `terminationGracePeriodSeconds`（默认 30s）宽限期：preStop 10s + 应用退出 10s < 30s 才安全，超了直接 SIGKILL。需要更长优雅期就在 yaml 里调大 `spec.terminationGracePeriodSeconds`。
 
@@ -1166,6 +1174,7 @@ spec:
     limits.memory: 2Gi
     pods: "10"
 ```
+
 ```bash
 kubectl create namespace prod
 kubectl apply -f quota.yaml
@@ -1188,6 +1197,7 @@ data:
   APP_VERSION: "v1"
   APP_ENV: "production"
 ```
+
 ```bash
 kubectl apply -f configmap.yaml
 ```
@@ -1232,6 +1242,7 @@ spec:
           initialDelaySeconds: 10
           periodSeconds: 10
 ```
+
 ```bash
 kubectl apply -f deployment.yaml
 kubectl -n prod get pods -o wide -w     # 等 3 副本跨 node01/node02 全 1/1 Running
@@ -1251,6 +1262,7 @@ spec:
   ports: [{port: 80, targetPort: 80}]
   type: ClusterIP
 ```
+
 ```bash
 kubectl apply -f clusterip.yaml
 kubectl -n prod get svc web           # 拿到 ClusterIP（如 10.101.158.119）
@@ -1281,6 +1293,7 @@ kubectl -n prod delete pod curlpod
 ```
 
 **对外暴露（NodePort）**：
+
 ```bash
 kubectl -n prod patch svc web -p '{"spec":{"type":"NodePort","ports":[{"port":80,"targetPort":80,"nodePort":30080}]}}'
 curl http://192.168.128.10:30080      # 任一节点 IP 都能访问（防火墙放行 30080）
@@ -1295,17 +1308,18 @@ kubectl -n prod rollout history deployment/web     # 看版本历史
 kubectl -n prod rollout undo deployment/web        # 回滚到上一版
 kubectl -n prod rollout status deployment/web
 ```
+
 > k9s 里 `:rs` 能清楚看到**旧 ReplicaSet 缩到 0、新 ReplicaSet 升到 3**——这就是滚动更新的本质（呼应 §4.5 纠偏）。
 
 #### ⑥ 常见问题实录（P0 全程亲历）
 
-| 现象 | 根因 | 修法 |
-| --- | --- | --- |
-| `yaml: line 5: could not find expected ':'` | heredoc 里手敲 YAML，缩进/拼写错，建议大家多检查（`ResourceQuote`/`metadate`） | **落文件 `vi xxx.yaml` 再 `apply -f`**，有高亮不易错 |
-| `pods "curlpod" is forbidden: failed quota ... must specify limits.cpu` | prod 有 ResourceQuota，临时 pod 没写 requests/limits | 给临时 pod 也补 resources（或丢 default ns 跑） |
-| `error: unknown flag: --requests` | 本集群 kubectl 的 `run` 子命令不认 `--requests`/`--limits`（版本不一致） | 改用声明式 Pod manifest 写 resources |
-| `container is waiting to start: ContainerCreating` 后 `logs` 空、`delete` 误删 | 镜像还在拉取（节点拉 Docker Hub 慢），没 Running 就去看日志/删 | 先 `kubectl get pod -w` 等 Running/Completed；用 sleep-pod+exec 法最稳 |
-| `curl http://192.168.128.10:30080` 不通 | 节点防火墙/安全组没放行 30080 | 放行该端口，或直接 port-forward |
+| 现象                                                                        | 根因                                                          | 修法                                                              |
+| ------------------------------------------------------------------------- | ----------------------------------------------------------- | --------------------------------------------------------------- |
+| `yaml: line 5: could not find expected ':'`                               | heredoc 里手敲 YAML，缩进/拼写错，建议大家多检查（`ResourceQuote`/`metadate`） | **落文件 `vi xxx.yaml` 再 `apply -f`**，有高亮不易错                       |
+| `pods "curlpod" is forbidden: failed quota ... must specify limits.cpu`   | prod 有 ResourceQuota，临时 pod 没写 requests/limits              | 给临时 pod 也补 resources（或丢 default ns 跑）                           |
+| `error: unknown flag: --requests`                                         | 本集群 kubectl 的 `run` 子命令不认 `--requests`/`--limits`（版本不一致）    | 改用声明式 Pod manifest 写 resources                                  |
+| `container is waiting to start: ContainerCreating` 后 `logs` 空、`delete` 误删 | 镜像还在拉取（节点拉 Docker Hub 慢），没 Running 就去看日志/删                  | 先 `kubectl get pod -w` 等 Running/Completed；用 sleep-pod+exec 法最稳 |
+| `curl http://192.168.128.10:30080` 不通                                     | 节点防火墙/安全组没放行 30080                                          | 放行该端口，或直接 port-forward                                          |
 
 > **贯穿结论**：
 >
@@ -1326,7 +1340,7 @@ kubectl -n prod rollout status deployment/web
 kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
 ```
 
-> **kubeadm 自签证书固定雷**：metrics-server 默认用 HTTPS 拉 kubelet 的 10250 端口指标，但 kubeadm 给 kubelet 签的证书不在它的信任链里 → 日志 `x509: certificate signed by unknown authority` / `Scrape failed` → `kubectl top` 直接 `Metrics API not available`。
+> **kubeadm 自签证书固定雷**：metrics-server 默认用 HTTPS 拉 kubelet 的 10250 端口指标，但 kubeadm 给 kubelet 签的证书不在它的信任链里 → 日志 `x509: certificate signed by unknown authority` / `Scrape failed` → `kubectl top` 直接 `Metrics API not available`。  
 > **修法**：给 metrics-server 容器加 `--kubelet-insecure-tls` 跳过校验（自签/学习环境用；生产应配真证书或用 `--kubelet-certificate-authority`）。
 
 ```bash
@@ -1355,7 +1369,7 @@ kubectl -n prod get hpa
 # web    Deployment/web   0%/60%      3         6         3          1m
 ```
 
-> **注意 1（手太快同款坑）**：metrics 还没就绪就建 HPA，`TARGETS` 会先显示 `<unknown>/60%`，不报错只是暂不生效；等 metrics 通了自动变 `0%/60%`。
+> **注意 1（手太快同款坑）**：metrics 还没就绪就建 HPA，`TARGETS` 会先显示 `<unknown>/60%`，不报错只是暂不生效；等 metrics 通了自动变 `0%/60%`。  
 > **注意 2（想看它真扩容）**：当前 `web` 就 3 副本、nginx 几乎零 CPU，利用率 0% 远没到 60% 阈值，HPA 只会维持 min=3。要肉眼看到扩容得制造负载：
 >
 > ```bash
@@ -1363,6 +1377,7 @@ kubectl -n prod get hpa
 > # 1~2 分钟后 kubectl -n prod get hpa / get pods，副本会往 6 涨
 > kubectl -n prod delete pod stress
 > ```
+>
 > **注意 3（声明式的好处）**：`kubectl autoscale` 是命令式、不落 yaml。要纳入版本管理：
 >
 > ```bash
@@ -1383,8 +1398,8 @@ kubectl -n prod rollout undo deployment/web        # 回滚到上一版
 ```
 
 > **实测两个反直觉点**：
+>
 > - **CHANGE-CAUSE 全是 `<none>`**：`set image` / `apply` 默认**不记录**变更原因（`--record` 在 1.21+ 已废弃）。回滚能成功，但历史看不出每版更改内容。要可回溯，给 Deployment 加注解：
->   
 >   ```bash
 >   kubectl -n prod annotate deployment/web \
 >     kubernetes.io/change-cause="upgrade nginx 1.27.2→1.27.3"
@@ -1472,7 +1487,9 @@ curl 172.31.0.5:31000    # node1 —— 任意节点都行，kube-proxy 把流�
 
 > 任何节点都能访问是因为 **kube-proxy 在每个节点都写了 iptables/ipvs 规则**——请求到了 node2，即使 Pod 跑在 node1，也会被转发过去。
 >
-> **NodePort 的痛点**：端口范围受限（30000+，没法用 80/443）、访问入口是 IP:Port 没法按域名/路径分流、没有 HTTPS 卸载——这些正是 Ingress 要解决的。
+> **NodePort 的痛点**：端口范围受限（30000+，没法用 80/443）、访问入口是 IP:Port 没法按域名/路径分流、没有 HTTPS 卸载——这些正是 Ingress（七层）要解决的。
+>
+> **裸金属多节点必看（`externalTrafficPolicy`）**：NodePort 默认 `Cluster`（随机节点转发、会 SNAT）；若被某 Controller 设成 `Local`，只有「本机有后端 Pod」的节点才接得住流量，从别的节点打过去会 000/超时。跨节点要通就保持 `Cluster`（详见 §6.4 坑4，NGF 实测踩过）。
 
 ### 5.3 LoadBalancer 与 ExternalName（四件套）
 
@@ -1528,116 +1545,155 @@ ipvsadm -Ln
 
 > 经验值：Service 几十条规模 iptables 随便用；上百上千（大集群、多租户）切 ipvs，否则规则同步会拖慢每次发布。
 
-## 6. Ingress
+## 6. Ingress 与 Gateway API（七层流量入口）
 
-Service 是**四层**（TCP/UDP）负载均衡；Ingress 是**七层**（HTTP/HTTPS）：按**域名、路径**转发，还能做 TLS 卸载、限流、重写。注意 Ingress 资源本身只是一份规则，真正干活的是 **Ingress Controller**（常用 ingress-nginx，但需要知道的是已经停止维护。推荐学习GetwayApi），得先装。
+### 6.0 Service(L4) vs Ingress/Gateway(L7)
+
+Service 是**四层**（TCP/UDP）负载均衡：只能按 `IP:Port` 转发，**没法按域名/路径分流、没有 TLS 卸载、没有限流/重写**。要让"一个 80 端口按 `a.com`/`b.com` 或 `/api`、`/web` 进不同后端"，必须上七层入口。
+
+七层入口有两代：
+
+- **Ingress**（旧）：`Ingress` 资源 + `ingress-controller`（代表 ingress-nginx）。
+- **Gateway API**（新，现行标准）：`GatewayClass`/`Gateway`/`HTTPRoute` 等 CRD，**实现无关**（NGINX、Traefik、Envoy 都能接）。
+
+> ⚠️ **ingress-nginx 已于 2026-03 停止维护**，新集群一律走 **Gateway API**；ingress-nginx 仅作历史兼容，见 §6.1。
+
+### 6.1 ingress-nginx（已退役 · 仅历史参考）
 
 ```
 浏览器 ──► Ingress Controller（Pod，NodePort 暴露）
-              │  按 host / path 分流
-              ├── hello.atguigu.com/  ──► hello-service:8000
-              └── demo.atguigu.com/nginx ──► nginx-service:8000
+            │  按 host / path 分流
+            ├── hello.atguigu.com/      ──► hello-service:8000
+            └── demo.atguigu.com/nginx  ──► nginx-service:8000
 ```
-
-### 6.1 安装
 
 ```bash
+# 旧装法（已退役，仅备查）：改国内镜像后 apply，再删 admission webhook、Service 改 NodePort
 wget https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v0.47.0/deploy/static/provider/baremetal/deploy.yaml
-
-# 1. 把镜像改成国内源（yaml 里搜 image:）
-#    registry.cn-hangzhou.aliyuncs.com/lfy_k8s_images/ingress-nginx-controller:v0.46.0
-# 2. apply
 kubectl apply -f deploy.yaml
-# 3. 老版本集群有 admission webhook 的 bug，直接删掉：
-kubectl delete -A ValidatingWebhookConfiguration ingress-nginx-admission
-# 4. Service 改 NodePort，方便外部访问
-kubectl edit svc ingress-nginx-controller -n ingress-nginx
-#   type: NodePort（并固定端口 nodePort: 30080 / 30443）
+kubectl delete -A ValidatingWebhookConfiguration ingress-nginx-admission   # 老集群 webhook bug
+kubectl edit svc ingress-nginx-controller -n ingress-nginx                # type: NodePort（30080/30443）
 ```
 
-### 6.2 使用
-
-准备两个后端服务（hello-server、nginx），然后写 Ingress 规则：
-
 ```yaml
+# 旧 Ingress 规则写法（ingressClassName + host/path → backend）
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: ingress-host-bar
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /$2      # 路径重写
+    nginx.ingress.kubernetes.io/limit-rps: "1"          # 限流
 spec:
   ingressClassName: nginx
   rules:
-  - host: "hello.atguigu.com"          # 按域名分流
+  - host: "hello.atguigu.com"
     http:
       paths:
       - pathType: Prefix
         path: "/"
-        backend:
-          service:
-            name: hello-server
-            port:
-              number: 8000
-  - host: "demo.atguigu.com"
-    http:
-      paths:
-      - pathType: Prefix
-        path: "/nginx"                  # 域名 + 路径双重分流
-        backend:
-          service:
-            name: nginx-service
-            port:
-              number: 8000
+        backend: { service: { name: hello-server, port: { number: 8000 } } }
 ```
 
-### 6.3 测试环境
+### 6.2 Gateway API + NGINX Gateway Fabric（现行标准，hands-on 实测）
 
-#### ① 域名访问
+NGF = NGINX 官方实现的 Gateway API 控制器。本集群（k8s 1.33）实测跑通，取代原 web 的 NodePort 30080 作为七层入口。
 
-本机没有 DNS，直接改 hosts 伪造域名（Windows：`C:\Windows\System32\drivers\etc\hosts`）：
+**架构关键点（最易误解）**：NGF 是**单共享数据面**——全集群只有一个 NGINX（跑在 `nginx-gateway` 命名空间 controller Pod 里的 `nginx` 容器），**所有 Gateway 的 listener 都配置进这一个 NGINX**。
 
-```text
-172.31.0.4 hello.atguigu.com
-172.31.0.4 demo.atguigu.com
-```
+> ❌ **不要**以为"每个 Gateway 资源会各自建一个 Service + 数据面 Pod"。NGF 只有一个共享数据面 Service：`nginx-gateway/ngf-nginx-gateway-fabric`（名字由 controller 的 `--service` 参数定）。Gateway 资源只是在这个共享 NGINX 里写路由规则。外部流量打到该共享 Service 的 NodePort，再由 NGINX 按 HTTPRoute 分流。
+
+**① 装 Gateway API CRD + NGF**
 
 ```bash
-curl hello.atguigu.com:30080    # 命中 hello-server
-curl demo.atguigu.com:30080     # 命中 nginx-service
+# Gateway API 标准 CRD（NGF 1.5.1 推荐 v1.2.0；装 v1.3.0 也能跑，但 GatewayClass 会告警 UnsupportedVersion）
+kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.0/standard-install.yaml
+
+# helm 装 NGF（oci 仓库直装，无需 add repo）
+helm install ngf oci://ghcr.io/nginxinc/charts/nginx-gateway-fabric \
+  --create-namespace -n nginx-gateway
+# ⚠️ 别加 --wait：GatewayClass 的 SupportedVersion 条件（非推荐 CRD 版本时为 False/告警）
+#    会让 helm 误判"未就绪"而 --wait 超时失败；去掉 --wait 即可，release 实际已是 deployed。
 ```
 
-#### ② 路径重写
-
-问题：`demo.atguigu.com/nginx` 转给 nginx-service 时，路径原样带着 `/nginx` 前缀，nginx 容器里没有这个路径 → 404。用注解重写：
+**② 建 Gateway + HTTPRoute（暴露 prod/web）**
 
 ```yaml
+# 都放业务命名空间 prod
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
 metadata:
-  annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /$2
+  name: prod-gateway
+  namespace: prod
 spec:
-  rules:
-  - host: "demo.atguigu.com"
-    http:
-      paths:
-      - pathType: Prefix
-        path: "/nginx(/|$)(.*)"       # 正则捕获：/nginx 后面的部分
-        backend: ...
-```
-
-效果：`/nginx` → `/`，`/nginx/a.html` → `/a.html`。
-
-#### ③ 流量限制
-
-使用注解，一行限流：
-
-```yaml
+  gatewayClassName: nginx              # 对应 NGF 装好的 GatewayClass
+  listeners:
+  - name: http
+    port: 80
+    protocol: HTTP
+    allowedRoutes:
+      namespaces:
+        from: Same                     # 只允许同命名空间的 HTTPRoute 挂上来
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
 metadata:
-  annotations:
-    nginx.ingress.kubernetes.io/limit-rps: "1"    # 每秒 1 个请求
+  name: web-route
+  namespace: prod
+spec:
+  parentRefs:
+  - name: prod-gateway                 # 挂到上面的 Gateway
+  rules:
+  - matches:
+    - path: { type: PathPrefix, value: / }
+    backendRefs:
+    - name: web                        # 后端还是普通 Service（ClusterIP/NodePort 都行）
+      port: 80
 ```
 
-压测，超限的直接返回 **503**。
+**③ 暴露数据面（裸金属关键两步）**
 
-> Ingress 注解（annotations）是个宝库：限流、重写、超时、跨域、TLS 都是一行注解的事，需要什么查 ingress-nginx 官方注解文档。
+```bash
+# NGF 默认给共享数据面 Service 建 LoadBalancer（裸金属 EXTERNAL-IP 永远 pending）
+# 裸金属改 NodePort，并把 externalTrafficPolicy 改 Cluster（否则跨节点不通，见 §6.4 坑4）
+kubectl -n nginx-gateway patch svc ngf-nginx-gateway-fabric \
+  -p '{"spec":{"type":"NodePort",
+               "externalTrafficPolicy":"Cluster",
+               "ports":[{"name":"http","port":80,"targetPort":80,"nodePort":30081},
+                        {"name":"https","port":443,"targetPort":443,"nodePort":30443}]}}'
+```
+
+**④ 验证**：`kubectl -n prod get gateway prod-gateway` 看到 `Programmed=True`；三节点都能通——
+
+```bash
+curl -s -o /dev/null -w '%{http_code}\n' http://192.168.128.10:30081   # 200
+curl -s -o /dev/null -w '%{http_code}\n' http://192.168.128.11:30081   # 200
+curl -s -o /dev/null -w '%{http_code}\n' http://192.168.128.12:30081   # 200
+# 返回 nginx 欢迎页 = Gateway API 七层路由已通 ✅
+```
+
+> 此时旧的 `web` Service 仍是 NodePort 30080（直连 Pod，无 L7 能力）。**生产建议把 `web` 改回 ClusterIP**，让 **Gateway 30081 成为唯一对外入口**；HPA/metrics 不受影响（它们看的是 metrics，不是 Service 类型）。
+
+### 6.3 三种 Gateway API 实现对比（选型）
+
+| 实现                     | 数据面  | 内存占用(2C2G 友好度) | 学习曲线       | 适用场景                         |
+| ------------------------ | ------- | --------------------- | -------------- | -------------------------------- |
+| ingress-nginx            | nginx   | 中                    | 低（资料最多） | **已退役 2026-03**，新项目不推荐 |
+| **NGINX Gateway Fabric** | nginx   | 中（~100-200Mi）      | 中             | 最贴合 nginx 体系（推荐）        |
+| Traefik                  | 自研 Go | **低**（最轻）        | 中             | 资源紧 / 想少占内存              |
+| Envoy Gateway            | Envoy   | **高**（~数百 Mi）    | 高             | 要 gRPC/高级流量治理             |
+
+> 本集群选 **NGF**：和已掌握的 nginx 知识无缝衔接，复杂度即展示性，适合作为运维 resume 的 K8s 入口实战。
+
+### 6.4 问题实录（本次 hands-on）
+
+> **1 · helm install --wait 超时失败**。`helm install ... --wait` 报 `INSTALLATION FAILED: context deadline exceeded`，但 Pod 实际 2/2 Running。根因：GatewayClass 的 `SupportedVersion` 条件在装了非推荐 CRD 版本（如 v1.3.0）时为 `False`，helm 把它当"未就绪"等超时。**修法**：去掉 `--wait` 直接装（release 仍 deployed），或先装 NGF 推荐的 v1.2.0 CRD。
+
+> **2 · Gateway API CRD 版本告警**。NGF 1.5.1 推荐 `v1.2.0`；装 `v1.3.0` 也能跑，但 GatewayClass 报 `UnsupportedVersion: Gateway API CRD versions are not recommended`。功能不影响，想消除告警就装 v1.2.0。
+
+> **3 · 误以为每 Gateway 各建一个 Service/数据面**。NGF 是**单共享数据面**：全集群只有一个 `nginx-gateway/ngf-nginx-gateway-fabric` Service（由 controller 的 `--service` 参数命名）。建 Gateway 后 `kubectl get svc prod-gateway` 找不到是正常的——入口是那个共享 Service 的 NodePort（本例 30081），不是按 Gateway 名建的 Service。
+
+> **4 · externalTrafficPolicy: Local 导致跨节点 NodePort 不通**。`kubectl get svc` 能看到 30081，但只有「本机有 NGF Pod」的节点能 200，从别的节点打过去全 000/超时。根因：helm 默认 `externalTrafficPolicy: Local`，只把 NodePort 流量转给**本机**后端 Pod，跨节点不 SNAT 回源被丢。**修法**：`kubectl patch svc ... -p '{"spec":{"externalTrafficPolicy":"Cluster"}}'`，所有节点统一转发。裸金属多节点必改。
 
 ## 7. 存储抽象
 
@@ -1645,7 +1701,7 @@ metadata:
 
 容器天然「用完即弃」：Pod 删了、漂移到别的节点了，写在容器里的数据全没了。裸挂载（hostPath）又会绑死节点——**Pod 换机器，数据留在原机器**。
 
-K8s 的解法是把「存储的提供」和「存储的使用」拆开：
+K8s 给出的解法是把「存储的提供」和「存储的使用」拆开：
 
 ```
 运维：造好一批 PV（存储池，比如 NFS 的三个目录）
@@ -1714,7 +1770,7 @@ spec:
       path: /nfs/data/redis
 ```
 
-这样能跑，但问题明显：**每个用存储的 Pod 都得写 NFS 地址和路径**，存储换了（NFS → Ceph）所有 yaml 全得改。所以生产用下面的 PV/PVC 抽象层。
+这样能跑，但问题明显：**每个用存储的 Pod 都得写 NFS 地址和路径**，存储换了（NFS → Ceph）所有 yaml 需要全部修改。所以生产用下面的 PV/PVC 抽象层。
 
 ### 7.4 PV & PVC
 
@@ -1995,7 +2051,7 @@ volumes:
 
 > **总结**：K8s 把存储拆成「运维提供 PV / 用户申请 PVC / Pod 无感使用」三层，配置类数据走 ConfigMap（明文、热更新）、敏感数据走 Secret（base64、tmpfs）。
 >
-> 三个核心记住不出大问题：
+> 核心：
 >
 > 1. **PVC Pending = 没有匹配的 PV**（storageClassName / accessModes / 容量三对照）
 > 2. **ConfigMap 热更新只改文件，不 reload 进程**；subPath 单文件挂载连文件都不更新
@@ -2122,15 +2178,15 @@ tolerations:
 
 > **一句话**：调度 = scheduler 两轮算法（预选过滤 + 优选打分）；约束手段从粗到细 = nodeName（指名）→ nodeSelector（标签）→ 亲和性（软硬两档、节点/Pod 两维）→ 污点容忍（节点反向挑 Pod）。
 >
-> 三条核心记住不出大问题：
+> 软/硬亲和性和污点/容忍性很好体现了K8s的设计哲学，优雅覆盖了绝大部分的场景需求。
+>
+> 核心：
 >
 > 1. **Pod Pending 先 describe 看 FailedScheduling**，原因无非资源不够 / 约束不满足 / 污点不容忍三类
 > 2. **软硬亲和的区别就一句话**：required 不满足就 Pending，preferred 不满足照样调度
 > 3. **驱逐节点 Pod 用 NoExecute 污点或 drain**，别手动挨个 delete
 
 ## 9. kubectl 排障工具箱
-
-前面各章的命令是散着讲的，这里收口成一张总表 + 一套固定套路——**排障时不用往前翻**。
 
 ### 9.1 高频命令总表
 
@@ -2170,7 +2226,7 @@ tolerations:
 
 ## 10. 资源治理：配额与驱逐保护
 
-三个「兜底」资源，管的是**别人不守规矩时集群怎么办**——PDB 兜 drain、ResourceQuota 兜命名空间、LimitRange 兜没写资源的 Pod。前文多处引用过它们，这里补齐原理。
+三个「兜底」资源，管的是**不符合规则时集群响应**——PDB 兜 drain、ResourceQuota 兜命名空间、LimitRange 兜没写资源的 Pod。前文多处引用过它们，这里补齐原理。
 
 ### 10.1 PDB：PodDisruptionBudget（驱逐保护）
 
@@ -2211,7 +2267,7 @@ spec:
     persistentvolumeclaims: "5"
 ```
 
-超配额的创建请求直接被 apiserver 拒绝（报 `exceeded quota`）——**配额是硬门槛，不是软限制**。
+超配额的创建请求直接被 apiserver 拒绝（报 `exceeded quota`）——**配额是硬门槛**。
 
 > **注意**：一旦 quota 限制了 cpu/memory，该 ns 里**所有 Pod 都必须写 requests/limits**，不写的直接拒绝创建——「以前能跑的 yaml 突然 apply 不上了」，先查是不是有人新加了 quota。
 
@@ -2243,7 +2299,7 @@ spec:
 
 ### 治理小结
 
-> **总的来说**：PDB 保服务在运维操作时的最小副本，ResourceQuota 卡命名空间总量，LimitRange 补默认值 + 卡上限——三个都是「防呆」设计，和 QoS（3.4）合起来构成资源治理全套。
+> **总的来说**：PDB 保服务在运维操作时的最小副本，ResourceQuota 卡命名空间总量，LimitRange 补默认值 + 卡上限——三个都是「防呆」设计，和 QoS（3.4）合起来构成资源治理全套。其实大部分设计都是在为傻子兜屎，我们只希望不用有兜不住的那天
 >
 > 上线顺序建议：**先 LimitRange（补默认）→ 再 ResourceQuota（卡总量）→ 多副本服务最后配 PDB（保 drain）**。
 
@@ -2561,7 +2617,7 @@ kubectl get jobs
 2. **backoffLimit 是全局失败上限**：重试带退避（10s → 20s → 40s…），超限 Job 变 Failed，不再烧资源
 3. **restartPolicy 只能 Never / OnFailure**：写 Always 会无限重启、Job 永远完不成——这是 Job 与长跑负载的本质区别
 
-> **踩坑**：Job 完成后 Pod 和 Job 对象默认**一直留着**（方便看日志），跑得勤的集群会攒一堆 Completed Pod。加 `ttlSecondsAfterFinished: 600` 让它自动清理。
+> **注意**：Job 完成后 Pod 和 Job 对象默认**一直留着**（方便看日志），跑得勤的集群会攒一堆 Completed Pod。加 `ttlSecondsAfterFinished: 600` 让它自动清理。
 
 ### 4.3 CronJob：定时任务
 
@@ -2703,7 +2759,7 @@ kubectl / SDK / Dashboard / Pod 内进程
 
 > **排障口诀**：**401 查认证**（证书过期、token 失效、kubeconfig 串了集群），**403 查鉴权**（没绑、绑错 ns、用了 RoleBinding 却想要集群权限）。绝大多数人一辈子遇的都是 403。
 >
-> 类比理解：**认证 = 门禁刷卡确认你是员工，鉴权 = 你的工牌能进哪些房间，准入 = 进房间要不要戴鞋套、登记**。三者独立，前门过了不代表后门过。
+> 类比理解：**认证 = 门禁刷卡确认你是员工，鉴权 = 你的工牌能进哪些房间，准入 = 进房间要不要戴鞋套、登记**。三者独立鉴别。
 
 ### 5.1 认证 Authentication：身份怎么来的
 
@@ -2770,7 +2826,7 @@ spec:
   automountServiceAccountToken: false   # 不需要调 apiserver 的 Pod 关掉自动挂载（安全加固常用）
 ```
 
-> **版本分水岭（1.24），背下来**：
+> **版本分水岭（1.24）**：
 >
 > 1. **1.24 之前**：创建 SA 会自动生成一个同名的 `kubernetes.io/service-account-token` Secret，token **永不过期**——泄露 = 永久后门。
 > 2. **1.24 起**：不再自动创建 Secret。`kubectl get secret | grep xxx` 查不到 token 是正常的，改用 `kubectl create token` 现签。Dashboard 章节第 ④ 步（1.3.5）踩的就是这个坑。
@@ -2780,7 +2836,11 @@ spec:
 
 ### 5.2 RBAC 四件套与 binding 拓扑
 
-RBAC（Role-Based Access Control）的思路就三件事：**谁（subject）→ 被授予哪份权限（role）→ 绑起来（binding）**。所以对象只有四个两个层级：
+RBAC（Role-Based Access Control）的思路就三件事：
+
+**谁（subject）→ 被授予哪份权限（role）→ 绑起来（binding）**。
+
+所以对象只有四个两个层级：
 
 | 对象                     | 级别   | 作用                                  |
 | ---------------------- | ---- | ----------------------------------- |
@@ -2798,9 +2858,9 @@ RBAC（Role-Based Access Control）的思路就三件事：**谁（subject）→
 
 > 中间那格「ClusterRole + RoleBinding」是实操最常用的省钱组合：官方现成的 ClusterRole（`view` / `edit` / `admin`）直接复用，用 RoleBinding 限制在某一个 ns——**不用为每个 ns 抄一份 Role**。
 >
-> 反过来「Role + ClusterRoleBinding」是个坑：Role 里压根定义不了集群级资源，绑出去只会让同名 ns 的权限跨 ns 生效，语义混乱，别用。
+> 反过来「Role + ClusterRoleBinding」是个坑：Role 里压根定义不了集群级资源，绑出去只会让同名 ns 的权限跨 ns 生效，语义混乱，不建议使用。
 
-**ClusterRole 的三类典型用途**（对应你草稿里那三条）：
+**ClusterRole 的三类典型用途**：
 
 | 用途              | 说明                                                                                         | 例子                      |
 | --------------- | ------------------------------------------------------------------------------------------ | ----------------------- |
@@ -3150,7 +3210,7 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: ci-bot
-  namespace: dev                                    # 不写 ns = 绑空气，403 查半天
+  namespace: dev                                    # 不写 ns = 绑空气，403 后无意义排查
 ```
 
 **② 签发 token + 拼 kubeconfig**
@@ -3194,7 +3254,7 @@ deploy:
 #     manifests: deploy.yaml
 ```
 
-> **踩坑集（把坑一次性说清）**：
+> **易错集（把坑一次性说清）**：
 >
 > 1. **kubeconfig 永远别 commit 进仓库**——存 GitLab CI File 变量 / GitHub Actions secret（加密）。token 泄露 = 该 SA 权限范围内的后门，等于把 dev 空间的部署权限交出去。
 > 2. **1.24+ `kubectl create token` 默认 1h 过期**：长跑流水线或 cron 定时任务若 token 中途失效，会卡在 `apply` 报 401。要么调大 `--duration`，要么改成**自建长期 Secret**（`kubectl -n dev create token` 临时 token 别往配置里贴，见 §5.1 版本分水岭）。长期 Secret 有泄露风险，要配轮转。
@@ -3202,11 +3262,11 @@ deploy:
 > 4. **跨集群路由**：`server` 填 apiserver 的 VIP/域名，CI runner 在集群外时必须能 TCP 通 `:6443`，否则 `kubectl` 直接 timeout，不是鉴权问题。
 > 5. **复用官方 ClusterRole**：若 CI 只需某 ns 内全量，`RoleBinding` 直接绑官方 `edit`/`admin` 比自己抄 rule 省事（§5.2 的 ClusterRole+RoleBinding 混搭）。
 
-#### 排障实录（本次 hands-on 三连坑，顺序即排障顺序）
+#### 排障实录（本次 hands-on 三连坑）
 
 一次真实建集群连踩三个坑，记录现象→根因→修法，方便对照自查。
 
-**坑① `kubeadm join` 报 `unknown flag: --token:xxxx`**
+**① `kubeadm join` 报 `unknown flag: --token:xxxx`**
 
 ```text
 kubeadm join k8s-master:6443 --token:xyjsuv.hza9u9yu9xzkp6lc
@@ -3216,7 +3276,7 @@ unknown flag: --token:xyjsuv.hza9u9yu9xzkp6lc
 - **根因**：用了冒号 `--token:值`。kubeadm 用 pflag，只认 `--flag=值` 或 `--flag 值`，冒号会被当成 flag 名的一部分，整段变成「未知 flag」。
 - **修**：`--token xyjsuv...`（空格）或 `--token=xyjsuv...`（等号）。**别手敲 join 命令**，直接 `kubeadm token create --print-join-command` 复制，从根上避免笔误。
 
-**坑② 缺 CA 指纹被拒**
+**② 缺 CA 指纹被拒**
 
 ```text
 discovery.bootstrapToken.caCertHashes: Invalid value: "": using token-based
@@ -3227,7 +3287,7 @@ true ... or pass --discovery-token-unsafe-skip-ca-verification flag to continue
 - **根因**：token 发现机制强制要求 CA 指纹，否则怕连到伪造的 apiserver。
 - **修**：补 `--discovery-token-ca-cert-hash sha256:<hash>`（master 上 `openssl x509 -pubkey -in /etc/kubernetes/pki/ca.crt | openssl rsa -pubin -outform der 2>/dev/null | openssl dgst -sha256 -hex` 取，见 §A）。**别用 `--discovery-token-unsafe-skip-ca-verification`**。token 默认 24h 过期，过期先 `kubeadm token create --print-join-command` 拿新的（自带 hash）。
 
-**坑③ `kubectl` 连 `localhost:8080` 被拒**
+**③ `kubectl` 连 `localhost:8080` 被拒**
 
 ```text
 couldn't get current server API group list: Get "http://localhost:8080/api?timeout=32s":
@@ -3318,7 +3378,7 @@ helm search repo nginx
 | 本地渲染               | `helm template <release> <chart>` —— **不连集群，先看最终渲染成啥样**                  |
 | 干跑                 | `helm install ... --dry-run --debug`                                     |
 
-> 对比记忆：Helm 的 `install / upgrade / rollback` ≈ 应用级的 `apply / set image / rollout undo`，但管的是**一整套资源**（Deployment + Service + ConfigMap + Ingress 一把梭），版本历史随 Release 走。
+> 对比记忆：Helm 的 `install / upgrade / rollback` ≈ 应用级的 `apply / set image / rollout undo`，但管的是**一整套资源**（Deployment + Service + ConfigMap + Ingress ），版本历史随 Release 走。
 
 ### 6.3 自定义 Chart（模板语法速览）
 
@@ -3390,11 +3450,11 @@ kubectl -n kubernetes-dashboard port-forward svc/kubernetes-dashboard 8443:443
 
 先分清两个常被混淆的东西：
 
-|      | **Metrics Server**                   | **Prometheus**                   |
-| ---- | ------------------------------------ | -------------------------------- |
-| 数据留存 | 只存最近一个采样点（内存，重启即丢）                   | 时序数据库，长期保留                       |
-| 服务谁  | `kubectl top`、HPA 的 CPU/内存决策（专题 1.3） | Grafana 面板、历史回溯、告警规则             |
-| 结论   | 装它只为了让 `top` / HPA 能工作               | 要做可观测必须上 Prometheus，**两者不是替代关系** |
+|          | **Metrics Server**                             | **Prometheus**                                    |
+| -------- | ---------------------------------------------- | ------------------------------------------------- |
+| 数据留存 | 只存最近一个采样点（内存，重启即丢）           | 时序数据库，长期保留                              |
+| 服务谁   | `kubectl top`、HPA 的 CPU/内存决策（专题 1.3） | Grafana 面板、历史回溯、告警规则                  |
+| 结论     | 只是 `top` / HPA 工作必要组件                  | 要做可观测必须上 Prometheus，**两者不是替代关系** |
 
 组件流水线：
 
@@ -3432,9 +3492,9 @@ helm upgrade --install monitoring prometheus-community/kube-prometheus-stack \
   -n monitoring --create-namespace -f monitoring-values.yaml
 ```
 
-> **四个黄金指标**是面板设计的起点：**延迟（Latency）、流量（Traffic）、错误（Errors）、饱和度（Saturation）**。告警别盯着 CPU 这种症状指标尖叫，优先告警用户能感知到的：错误率、延迟 P99。
+> **四个黄金指标**是面板设计的起点：**延迟（Latency）、流量（Traffic）、错误（Errors）、饱和度（Saturation）**。告警别盯着 CPU 这种症状指标，优先告警能感知到的：错误率、延迟 P99。
 >
-> 另一个原则：**告警必须有处置手册**，没人看、没人能处理的告警等于噪音，会被习惯性忽略，真出事时那一条也被一起忽略掉。
+> 另一原则：**告警必须有处置手册**。
 
 ### 6.6 EFK：日志栈
 
@@ -3470,7 +3530,7 @@ helm upgrade --install fluent-bit fluent/fluent-bit -n logging --create-namespac
 
 > **日志第一原则：应用日志必须打到 stdout/stderr**，别往容器内的文件里写——写进文件的话 `kubectl logs` 看不到、EFK 采不到、Pod 删了也没了。这条做不到，后面整套 EFK 都白搭。
 >
-> **踩坑**：
+> **注意以下**：
 >
 > 1. **ES 吃内存且不支持 swap**：`resources.requests.memory` 给足（实验环境 ≥2Gi），配 `discovery.type: single-node`；**JVM heap 别超过容器 limit 的 50%**，否则照样 OOMKilled。
 > 2. **日志暴涨撑爆磁盘**：Fluent Bit 配 `Mem_Buf_Limit` 做背压，ES 配 ILM 生命周期策略（例如 7 天滚动删除）。
@@ -3547,4 +3607,4 @@ etcdctl snapshot status /backup/etcd-2026-09-15.db
 
 ---
 
-> 总结：K8s = 「声明式 API + 控制循环」的集群操作系统——kubeadm 装好集群，Deployment 管无状态负载，Service/Ingress 管流量入口，PV/PVC/ConfigMap/Secret 管数据与配置，五大控制器（Deployment/StatefulSet/DaemonSet/Job/CronJob）覆盖所有工作负载形态，RBAC + 准入控制管权限边界，Helm 管打包分发，Prometheus / EFK 管可观测，证书与 etcd 备份保命。
+> K8s = 「声明式 API + 控制循环」的集群操作系统——kubeadm 装好集群，Deployment 管无状态负载，Service/Ingress 管流量入口，PV/PVC/ConfigMap/Secret 管数据与配置，五大控制器（Deployment/StatefulSet/DaemonSet/Job/CronJob）覆盖所有工作负载形态，RBAC + 准入控制管权限边界，Helm 管打包分发，Prometheus / EFK 管可观测，证书与 etcd 备份保命做容灾保全。

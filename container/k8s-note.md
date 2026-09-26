@@ -422,11 +422,13 @@ kubectl get pods -A     # -A = 所有命名空间，确认全部 Running
 
 **全部 Ready + 系统组件全 Running = 集群搭建完成。** 卡在 NotReady 排查网络组件安装/镜像拉取情况。
 
-### 3.5 部署 Dashboard（k8s 1.27+ 适配）
+### 3.5 部署 Dashboard（k8s 1.27+ 适配 · 项目已归档）
 
-> **版本红线**：k8s **1.27 起官方只维护 Helm 安装**，单文件 `recommended.yaml` 路线废弃；
+> **项目状态（2026-09 注）**：`kubernetes/dashboard` **2026-01-21 已归档**（仓库迁至 `kubernetes-retired/dashboard`，不再有任何更新，**含安全补丁**）；SIG UI 指定的官方继任者是 **Headlamp**（`kubernetes-sigs/headlamp`，多集群 + 插件体系 + OIDC/SSO，官方迁移指南 2026-07 发布）。本节流程仍可跑通（存量 chart / 镜像继续可用），作为「Web UI + RBAC + port-forward 安全访问」的学习案例保留；新集群生产用途请直接上 Headlamp。
 >
-> k8s **1.33.x 对应 Dashboard v3.1.0+**（1.24 起进 v3.x 线）。老教程里的 `v2.3.1/recommended.yaml` 是给 ≤1.21 集群的，1.33 上即使 apply 成功 UI 也残废（metrics-scraper 依赖的旧 metrics API 已被移除，Metrics 页必失效）。非旧环境请一律用 Helm 装 v3.x。
+> **版本红线**：k8s **1.27 起官方只维护 Helm 安装**，单文件 `recommended.yaml` 路线废弃，Dashboard 随之进入 v3.x 线；
+>
+> k8s **1.33.x 对应 Dashboard v3.1.0+**。老教程里的 `v2.3.1/recommended.yaml` 是给 ≤1.21 集群的，1.33 上即使 apply 成功 UI 也残废（metrics-scraper 依赖的旧 metrics API 已被移除，Metrics 页必失效）。非旧环境请一律用 Helm 装 v3.x。
 
 #### ① 部署（Helm，官方推荐）
 
@@ -3423,14 +3425,16 @@ helm lint ./mychart                                 # 语法体检，CI 里值�
 helm template myapp ./mychart                       # 本地渲染，看最终 yaml
 ```
 
-> **踩坑**：
+> **值得注意的是**：
 >
 > 1. **同一 chart 部署多环境 = 不同 values 文件**（dev-values / prod-values），**别改 templates 里的硬编码**——环境差异全部收敛到 values，这是 Helm 的使用纪律。
 > 2. `--set` 里的 `.` 要转义（`--set ingress\.enabled=true`），数组用 `{a,b,c}`；复杂值一律 `-f` 文件，别在命令行堆一串 --set（不可追溯）。
 > 3. **upgrade 不会更新 CRD**：Chart 里的 CRD 只在首次安装时创建，chart 升版带了新 CRD 要手工 apply。
 > 4. **rollback 不回滚数据**：它会回滚工作负载与配置，但 PV 里的业务数据、已经应用的数据库迁移不会回退——和 `rollout undo` 一个道理。
 
-### 6.4 Dashboard：官方可视化
+### 6.4 Dashboard：官方可视化（已归档，继任者 Headlamp）
+
+> **2026-01 项目归档**：`kubernetes/dashboard` 迁入 `kubernetes-retired`，此后无任何补丁——它又是一个高权限 Web UI，「不可修复的漏洞 + 宽权限 SA」的组合风险随时间只增不减（§3.5 有完整状态说明）。SIG UI 指定 **Headlamp** 为继任者。下表的安全纪律（短时效 token / 只读 SA / 禁公网暴露）对任何集群 Web UI 都成立，迁到 Headlamp 后照样适用。
 
 1.3.5 讲的部署流程，这里补「组件视角 + 安全边界」：
 

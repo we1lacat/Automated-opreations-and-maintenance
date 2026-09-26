@@ -87,9 +87,9 @@ common server/   常用服务
 
 | 组件 | 版本 / 说明 |
 |------|------------|
-| Kubernetes | 安装与引导示例（§3.1–3.4）用 kubeadm v1.20.9；CLI 部分的老教程地址也保留其原貌。集群实战与排障（§3.5 Dashboard、CNI、§5.x 安全与 CI/CD、§6 组件）已在 **v1.33.x** 集群上跑过，1.27+ 的 Breaking Change 都在正文里单独标注 |
-| CNI / Ingress | Calico v3.31.6（对应 k8s 1.33）、ingress-nginx v0.46.0 |
-| Dashboard | Helm 安装 v3.x（k8s 1.27 起官方只维护 Helm 路线，单文件 `recommended.yaml` 已废弃） |
+| Kubernetes | 安装与引导示例（§3.1–3.4）用 kubeadm v1.20.9；CLI 部分的老教程地址也保留其原貌。集群实战与排障（§3.5 Dashboard、CNI、§5.x 安全与 CI/CD、§6 组件）已在 **v1.33.x** 集群上跑过，1.27+ 的 Breaking Change 都在正文里单独标注。v1.33 现已 EOL（当前稳定线 v1.37，2026-08），作为学习环境的实操记录保留 |
+| CNI / Ingress | Calico v3.31.6（对应 k8s 1.33）、ingress-nginx v0.46.0（**2026-03 已退役**，正文 §6.1 标注，新集群走 Gateway API） |
+| Dashboard | Helm 安装 v3.x（k8s 1.27 起官方只维护 Helm 路线，单文件 `recommended.yaml` 已废弃）；**项目 2026-01 已归档**，SIG UI 继任者为 Headlamp（正文 §3.5 / 进阶 6.4 有说明） |
 | 终端 TUI | k9s v0.51.0 |
 | Docker | Engine 27.3.1、Compose v2.29.1 |
 | 镜像源 | 示例中给出国内镜像（阿里云等），境外拉不动时替换即可 |

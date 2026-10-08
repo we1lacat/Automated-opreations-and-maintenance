@@ -24,6 +24,7 @@
 Linux/           Linux 基础与 Shell 编程
 container/       容器化与容器编排
 common server/   常用服务
+Log system/      日志与可观测
 ```
 
 | 文件 | 规模 | 覆盖内容 |
@@ -34,6 +35,7 @@ common server/   常用服务
 | [`docker-note.md`](container/docker-note.md) | 2462 行 | 安装、Docker 结构与镜像原理、常用命令、容器卷、Dockerfile（含分层缓存与构建实战）、Docker 网络（docker0 / veth pair / 自定义网络）、Compose、Swarm 集群与 stack/secret |
 | [`k8s-note.md`](container/k8s-note.md) | 3550 行 | 基础概念与架构 → kubeadm 部署集群（含 Calico CNI、Dashboard、k9s）→ 资源清单 / Namespace / Pod 生命周期 / Deployment（含生产级 web 部署实战）/ Service / Ingress / 存储（PV·PVC·SC·ConfigMap·Secret）/ 调度 / kubectl 排障工具箱 / 资源治理 → 进阶专题（HPA、SQL 上 K8s 可行性、StatefulSet、Job·DaemonSet·CronJob、安全认证鉴权准入与 RBAC（含 CI/CD 凭证实战）、Helm 与生态组件、证书续期与 etcd 备份） |
 | [`NFS.md`](common%20server/NFS.md) | 1018 行 | NFS 共享存储：NFS 与 RPC/rpcbind 的端口注册原理、版本演进（v2 → v4.2）、安装部署与防火墙 / SELinux、`/etc/exports` 语法与参数全表、客户端挂载选项、fstab 与 autofs 自动挂载、root_squash 与 UID 映射的权限模型、14 条排障速查、与 K8s PV / StorageClass 的联动、性能与安全加固 |
+| [`Prometheus.md`](Log%20system/Prometheus.md) | 1788 行 | 指标监控体系：四类数据选型边界 → 数据模型（序列唯一性 / 四种指标类型 / 高基数代价）→ Pull 机制（target·endpoint·exporter 三概念区分 / 四种服务暴露 / node_exporter 与 textfile collector / 端口规划）→ 配置（scrape_configs、relabel 两个时机、recording vs alerting）→ TSDB 存储（Head 块与 WAL / 内存与磁盘估算 / retention 是启动参数）→ PromQL（必背算子 / 聚合分组 / 排障表达式 / 五个陷阱）→ 角色与集群（联邦 / remote write / 集群不等于高可用）→ K8s 部署（kube-prometheus-stack 六个组件与 2C2G 降配、Operator 四个 CRD、ServiceMonitor port 写 name 的坑、instance 与 job 的区分、K8s SD 的 endpoint 角色、relabel 去重与 labeldrop）→ Grafana（provisioning 固定 uid、Min step 陷阱、dashboard 迁移）→ 第三方应用（exporter 生态、client 库、RED 与 USE、nginx / Redis 实例、k8s charts 五件套、file_sd、三种方式引入 dashboard）→ 双机隧道监控实战 → 告警规则与 Alertmanager（分组抑制静默路由、inhibit 根因抑制、邮件排查）→ 排障速查 + 常见误区 |
 | `LICENSE` | — | MIT License，Copyright (c) 2026 we1l |
 
 ---
@@ -48,6 +50,8 @@ common server/   常用服务
 ③ Docker            单机容器化：镜像怎么分层、数据怎么存、网络怎么通
     │
 ④ Kubernetes        多机编排：声明式 API + 控制循环
+    │
+⑤ 可观测            部署完要知道「现在有没有事」——指标 / 日志 / 链路
 ```
 
 > 跳过前两步直接上 K8s 也能学，但**排障时会卡在 Linux / Shell 层面**——比如 Pod 里 `curl` 不通，真正的原因可能是节点 iptables 桥接没开、或者脚本里变量没加引号。前两块是地基。
@@ -64,7 +68,7 @@ common server/   常用服务
 | Web 服务 | Nginx、Tomcat、LVS + Keepalived + HAProxy |
 | 数据库 | MySQL、Redis 等主流数据库的部署、备份与故障处理 |
 | 自动化 | Ansible、Jenkins |
-| 可观测 | Prometheus + Grafana、EFK 日志栈 |
+| 可观测 | Prometheus + Grafana 已整理（见上表）；**EFK / Loki 日志栈**、链路追踪（Jaeger）待补 |
 
 > 补充无法确保及时，整理进度有限，所以更新不定期——目录文件就是当前进度。
 

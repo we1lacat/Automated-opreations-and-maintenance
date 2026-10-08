@@ -7,11 +7,25 @@
 
 ## 一、核心思想：一切皆文件
 
-```
+```text
 在 Linux 中把硬件映射为文件，一切皆文件
 ```
 
 ---
+
+```text
+Last login: Wed Oct  7 15:45:25 2026
+[root@node2 ~]# ls -lh --help 【parmeter】
+#root-登录用户，$标识普通用户
+#@node-连接符+主机名
+#~-目录
+#ls-命令本身
+#-lh-复合短选项，调整功能
+#--help- 长选项
+#参数-可来自传递或键入
+```
+
+
 
 ## 二、目录结构
 
@@ -47,7 +61,32 @@
 | 绝对路径 | 从根目录 `/` 开始定位 | `/nono/etc/good apple.txt` |
 | 相对路径 | 从当前目录开始定位 | `etc/good apple.txt` |
 
-### 3.2 目录操作
+### 3.2 文件类型
+
+`ls -l` 输出的**第一个字符**就是文件类型（`ls --color` 会再用颜色区分一次）：
+
+| 标识 | 类型 | 颜色 |
+|------|------|------|
+| `-` | 普通文件 | 默认 |
+| `d` | 目录 | 蓝色 |
+| `l` | 链接文件（软链接） | 浅蓝色 |
+| `b` | 块设备文件（硬盘等） | 黄色 |
+| `c` | 字符设备文件（键盘、串口等） | 黄色 |
+| `p` | 管道设备文件 | — |
+| `s` | 套接字 | — |
+
+### 3.3 常用快捷键（bash 行编辑）
+
+| 快捷键 | 作用 |
+|--------|------|
+| `Ctrl + C` | 终止 / 中断当前正在执行的命令 |
+| `Ctrl + A` | 光标跳到行首 |
+| `Ctrl + E` | 光标跳到行尾 |
+| `Ctrl + U` | 删除光标到行首的全部内容 |
+| `Ctrl + W` | 删除光标前的一个单词 |
+| `Esc + .` | 插入上一条命令的最后一个参数（连按可往前翻） |
+
+### 3.4 目录操作
 
 #### cd
 
@@ -59,11 +98,69 @@ cd ..              # 回到上级目录
 cd ../../root      # 从 nono 回到 root（多级向上）
 ```
 
+相对路径和绝对路径
+
+```
+[king@node2 ~]$ cd /home/king/apple/futa/badend/
+[king@node2 badend]$ pwd
+/home/king/apple/futa/badend
+[king@node2 badend]$ cd /home/king/
+[king@node2 ~]$ pwd
+/home/king
+[king@node2 ~]$ cd apple/futa/badend/
+[king@node2 badend]$ pwd
+/home/king/apple/futa/badend
+[king@node2 badend]$ 
+```
+
+相对于工作目录和绝对与于根目录
+
+```
+#.当前目录
+#..上级目录
+#通过ls-la明显得出
+[king@node2 badend]$ pwd
+/home/king/apple/futa/badend
+[king@node2 badend]$ ls -a
+.  ..
+[king@node2 badend]$ ls -la
+total 0
+drwxr-xr-x. 2 king king  6 Oct  7 17:17 .
+drwxr-xr-x. 3 king king 20 Oct  7 17:17 ..
+[king@node2 badend]$ cd .
+[king@node2 badend]$ pwd
+/home/king/apple/futa/badend
+[king@node2 badend]$ cd ..
+[king@node2 futa]$ pwd
+/home/king/apple/futa
+```
+
+
+
 #### mkdir
 
 ```bash
 mkdir /home/zipmaker/fomal    # 创建单级目录（父目录不存在会报"没有那个文件或目录"）
 mkdir -p /home/zipmaker/fomal # -p：创建多级目录
+[king@node2 root]$ cd /home/
+[king@node2 home]$ ls
+king
+[king@node2 home]$ cd king/
+[king@node2 ~]$ ls
+[king@node2 ~]$ mkdir kingdir
+[king@node2 ~]$ ls
+kingdir
+[king@node2 ~]$ mkdir -p apple/futa/badend
+[king@node2 ~]$ ls
+apple  kingdir
+[king@node2 ~]$ ls -R apple
+apple:
+futa
+
+apple/futa:
+badend
+
+apple/futa/badend:
 ```
 
 #### pwd / rmdir / rm
@@ -72,12 +169,50 @@ mkdir -p /home/zipmaker/fomal # -p：创建多级目录
 pwd                # 显示当前工作目录
 rmdir dir          # 删除空目录（有内容则删除失败）
 rm -rf target      # 强制递归删除，慎用！
+[king@node2 /]$ cd /home/king/
+[king@node2 ~]$ ls
+apple  kingdir
+[king@node2 ~]$ mkdir test/emage
+mkdir: cannot create directory ‘test/emage’: No such file or directory
+[king@node2 ~]$ mkdir -p  test/emage
+[king@node2 ~]$ ls
+apple  kingdir  test
+[king@node2 ~]$ cd test/
+[king@node2 test]$ vim hello.txt
+bash: vim: command not found
+[king@node2 test]$ vi hello.txt
+[king@node2 test]$ ls
+emage  hello.txt
+[king@node2 test]$ rmdir emage/
+[king@node2 test]$ ls
+hello.txt
+[king@node2 test]$ mkdir of
+[king@node2 test]$ cd ..
+[king@node2 ~]$ ls
+apple  kingdir  test
+[king@node2 ~]$ rmdir test/
+rmdir: failed to remove 'test/': Directory not empty
+
+[king@node2 ~]$ ls
+apple  kingdir  logs1.txt  test
+[king@node2 ~]$ rm -rf test/
+[king@node2 ~]$ ls
+apple  kingdir  logs1.txt
+[king@node2 ~]$ 
 ```
 
 #### touch
 
 ```bash
 touch route/filename    # 创建一个空文件
+[king@node2 test]$ touch dics.txt
+[king@node2 test]$ ls
+dics.txt  hello.txt  of
+[king@node2 test]$ ls -la
+total 4
+#drwxr-xr-x. 3 king king  49 Oct  7 17:35 .
+#drwx------. 5 king king 102 Oct  7 17:28 ..
+-rw-r--r--. 1 king king   0 Oct  7 17:35 dics.txt
 ```
 
 #### cp
@@ -87,7 +222,28 @@ cp [选项] source destdir     # 基本语法
 cp /opt /home/apple          # 拷贝到指定目录
 cp -r /home/apple /opt       # -r：递归复制整个文件夹
 \cp -r /home/apple /opt      # \cp：强制覆盖不提示
-cp -p /home/apple/a.txt /tmp # -p：连同权限、属主、时间戳一起复制
+cp -p /home/apple/a.txt /tmp # -p：连同权限、属主、时间戳一起复制，推荐加上此选项
+
+[king@node2 ~]$ ls
+apple  kingdir  test
+[king@node2 ~]$ cp test/dics1.txt kingdir/
+[king@node2 ~]$ ls kingdir/
+dics1.txt
+[king@node2 ~]$ cp test/dics2.txt test/dics.txt 
+[king@node2 ~]$ ls kingdir/
+dics1.txt
+[king@node2 ~]$ cd test/
+[king@node2 test]$ ls
+dics1.txt  dics2.txt  dics.txt  hello.txt  of
+[king@node2 test]$ cp dics2.txt dics.txt /home/king/kingdir/
+[king@node2 test]$ ls
+dics1.txt  dics2.txt  dics.txt  hello.txt  of
+[king@node2 test]$ cp dics2.txt  /home/king/kingdir/
+[king@node2 test]$ ls
+dics1.txt  dics2.txt  dics.txt  hello.txt  of
+[king@node2 test]$ cd /home//king/kingdir/
+[king@node2 kingdir]$ ls
+dics1.txt  dics2.txt  dics.txt
 ```
 
 #### mv
@@ -95,9 +251,26 @@ cp -p /home/apple/a.txt /tmp # -p：连同权限、属主、时间戳一起复�
 ```bash
 mv oldnamefile newnamefile           # 重命名文件
 mv /temp/movefile /target/route      # 移动文件
+
+[king@node2 kingdir]$ ls
+dics1.txt  dics2.txt  dics.txt
+[king@node2 kingdir]$ mv dics1.txt lover.txt
+[king@node2 kingdir]$ ls
+dics2.txt  dics.txt  lover.txt
+[king@node2 kingdir]$ mv lover.txt  /home/king/apple/
+[king@node2 kingdir]$ cd../..
+bash: cd../..: No such file or directory
+[king@node2 kingdir]$ cd ../..
+[king@node2 home]$ ls
+king
+[king@node2 home]$ cd king/
+^[[D[king@node2 ~]$ cd apple/
+[king@node2 apple]$ ls
+futa  lover.txt
+[king@node2 apple]$ 
 ```
 
-### 3.3 文件查看
+### 3.5 文件查看
 
 #### cat / more / less
 
@@ -105,6 +278,69 @@ mv /temp/movefile /target/route      # 移动文件
 cat [目标]         # 只读模式查看文件
 cat -n file        # -n 显示行号
 cat file | more    # 分页浏览文件
+
+[king@node2 apple]$ cat /etc/passwd
+root:x:0:0:root:/root:/bin/bash
+bin:x:1:1:bin:/bin:/sbin/nologin
+daemon:x:2:2:daemon:/sbin:/sbin/nologin
+adm:x:3:4:adm:/var/adm:/sbin/nologin
+lp:x:4:7:lp:/var/spool/lpd:/sbin/nologin
+sync:x:5:0:sync:/sbin:/bin/sync
+shutdown:x:6:0:shutdown:/sbin:/sbin/shutdown
+halt:x:7:0:halt:/sbin:/sbin/halt
+mail:x:8:12:mail:/var/spool/mail:/sbin/nologin
+operator:x:11:0:operator:/root:/sbin/nologin
+games:x:12:100:games:/usr/games:/sbin/nologin
+ftp:x:14:50:FTP User:/var/ftp:/sbin/nologin
+nobody:x:65534:65534:Kernel Overflow User:/:/sbin/nologin
+systemd-coredump:x:999:999:systemd Core Dumper:/:/sbin/nologin
+tss:x:59:59:Account used for TPM access:/:/usr/sbin/nologin
+sssd:x:998:998:User for sssd:/:/sbin/nologin
+sshd:x:74:74:Privilege-separated SSH:/usr/share/empty.sshd:/usr/sbin/nologin
+chrony:x:997:997:chrony system user:/var/lib/chrony:/sbin/nologin
+dbus:x:81:81:System Message Bus:/:/usr/sbin/nologin
+king:x:1000:1000::/home/king:/bin/bash
+
+[king@node2 apple]$ cat -n  /etc/passwd
+     1  root:x:0:0:root:/root:/bin/bash
+     2  bin:x:1:1:bin:/bin:/sbin/nologin
+     3  daemon:x:2:2:daemon:/sbin:/sbin/nologin
+     4  adm:x:3:4:adm:/var/adm:/sbin/nologin
+     5  lp:x:4:7:lp:/var/spool/lpd:/sbin/nologin
+     6  sync:x:5:0:sync:/sbin:/bin/sync
+     7  shutdown:x:6:0:shutdown:/sbin:/sbin/shutdown
+     8  halt:x:7:0:halt:/sbin:/sbin/halt
+     9  mail:x:8:12:mail:/var/spool/mail:/sbin/nologin
+    10  operator:x:11:0:operator:/root:/sbin/nologin
+    11  games:x:12:100:games:/usr/games:/sbin/nologin
+    12  ftp:x:14:50:FTP User:/var/ftp:/sbin/nologin
+    13  nobody:x:65534:65534:Kernel Overflow User:/:/sbin/nologin
+    14  systemd-coredump:x:999:999:systemd Core Dumper:/:/sbin/nologin
+    15  tss:x:59:59:Account used for TPM access:/:/usr/sbin/nologin
+    16  sssd:x:998:998:User for sssd:/:/sbin/nologin
+    17  sshd:x:74:74:Privilege-separated SSH:/usr/share/empty.sshd:/usr/sbin/nologin
+    18  chrony:x:997:997:chrony system user:/var/lib/chrony:/sbin/nologin
+    19  dbus:x:81:81:System Message Bus:/:/usr/sbin/nologin
+    20  king:x:1000:1000::/home/king:/bin/bash
+    
+    
+[king@node2 apple]$ cat /etc/passwd|more
+root:x:0:0:root:/root:/bin/bash
+bin:x:1:1:bin:/bin:/sbin/nologin
+daemon:x:2:2:daemon:/sbin:/sbin/nologin
+adm:x:3:4:adm:/var/adm:/sbin/nologin
+lp:x:4:7:lp:/var/spool/lpd:/sbin/nologin
+sync:x:5:0:sync:/sbin:/bin/sync
+shutdown:x:6:0:shutdown:/sbin:/sbin/shutdown
+halt:x:7:0:halt:/sbin:/sbin/halt
+mail:x:8:12:mail:/var/spool/mail:/sbin/nologin
+operator:x:11:0:operator:/root:/sbin/nologin
+games:x:12:100:games:/usr/games:/sbin/nologin
+ftp:x:14:50:FTP User:/var/ftp:/sbin/nologin
+nobody:x:65534:65534:Kernel Overflow User:/:/sbin/nologin
+systemd-coredump:x:999:999:systemd Core Dumper:/:/sbin/nologin
+tss:x:59:59:Account used for TPM access:/:/usr/sbin/nologin
+sssd:x:998:998:User for sssd:/:/sbin/nologin
 ```
 
 #### ls
@@ -120,6 +356,8 @@ ls -lt              # 按修改时间排序（新的在前）
 ls -ld dir          # 看目录本身的信息，而不是目录里面的东西
 ```
 
+> `.` 开头的文件是**隐藏文件**，要 `ls -a` 才看得到；短选项可组合，例如 `ls -al /root`。
+
 `ls -l` 每一列的含义：
 
 ```text
@@ -133,13 +371,7 @@ ls -ld dir          # 看目录本身的信息，而不是目录里面的东西
                            属主名   属组名
 ```
 
-| 首字符 | 类型 |
-|--------|------|
-| `-` | 普通文件 |
-| `d` | 目录 |
-| `l` | 软链接 |
-| `c` / `b` | 字符设备 / 块设备 |
-| `s` / `p` | socket / 管道 |
+> 首字符与类型的对应关系见 **§3.2 文件类型**（`-` 普通文件 / `d` 目录 / `l` 软链接 …）。
 
 实例（同一台机器、同一个 `makefile` 目录）：
 
@@ -187,9 +419,32 @@ echo $HOSTNAME        # 输出主机名
 head -n num file      # 查看文件前 num 行（默认前十行）
 tail -n num file      # 查看文件最后 num 行（默认后十行）
 tail -f file          # 实时追踪文件更新（看日志常用）
+[king@node2 apple]$ head -n 10 /etc/passwd
+root:x:0:0:root:/root:/bin/bash
+bin:x:1:1:bin:/bin:/sbin/nologin
+daemon:x:2:2:daemon:/sbin:/sbin/nologin
+adm:x:3:4:adm:/var/adm:/sbin/nologin
+lp:x:4:7:lp:/var/spool/lpd:/sbin/nologin
+sync:x:5:0:sync:/sbin:/bin/sync
+shutdown:x:6:0:shutdown:/sbin:/sbin/shutdown
+halt:x:7:0:halt:/sbin:/sbin/halt
+mail:x:8:12:mail:/var/spool/mail:/sbin/nologin
+operator:x:11:0:operator:/root:/sbin/nologin
+
+[king@node2 apple]$ tail -n 10 /etc/passwd
+games:x:12:100:games:/usr/games:/sbin/nologin
+ftp:x:14:50:FTP User:/var/ftp:/sbin/nologin
+nobody:x:65534:65534:Kernel Overflow User:/:/sbin/nologin
+systemd-coredump:x:999:999:systemd Core Dumper:/:/sbin/nologin
+tss:x:59:59:Account used for TPM access:/:/usr/sbin/nologin
+sssd:x:998:998:User for sssd:/:/sbin/nologin
+sshd:x:74:74:Privilege-separated SSH:/usr/share/empty.sshd:/usr/sbin/nologin
+chrony:x:997:997:chrony system user:/var/lib/chrony:/sbin/nologin
+dbus:x:81:81:System Message Bus:/:/usr/sbin/nologin
+king:x:1000:1000::/home/king:/bin/bash
 ```
 
-### 3.4 输出重定向
+### 3.6 输出重定向
 
 | 符号 | 作用 |
 |------|------|
@@ -199,14 +454,278 @@ tail -f file          # 实时追踪文件更新（看日志常用）
 ```bash
 ls > a.txt        # 覆盖写入
 ls >> a.txt       # 追加写入
+[king@node2 apple]$ head -n 10 /etc/passwd > /home/king/logs1.txt
+[king@node2 apple]$ tail -n 10 /etc/passwd > /home/king/logs1.txt
+[king@node2 apple]$ cat  /home/king/logs1.txt
+games:x:12:100:games:/usr/games:/sbin/nologin
+ftp:x:14:50:FTP User:/var/ftp:/sbin/nologin
+nobody:x:65534:65534:Kernel Overflow User:/:/sbin/nologin
+systemd-coredump:x:999:999:systemd Core Dumper:/:/sbin/nologin
+tss:x:59:59:Account used for TPM access:/:/usr/sbin/nologin
+sssd:x:998:998:User for sssd:/:/sbin/nologin
+sshd:x:74:74:Privilege-separated SSH:/usr/share/empty.sshd:/usr/sbin/nologin
+chrony:x:997:997:chrony system user:/var/lib/chrony:/sbin/nologin
+dbus:x:81:81:System Message Bus:/:/usr/sbin/nologin
+king:x:1000:1000::/home/king:/bin/bash
+
+
+[king@node2 apple]$ tail -n 10 /etc/passwd >> /home/king/logs1.txt
+[king@node2 apple]$ cat  /home/king/logs1.txt
+games:x:12:100:games:/usr/games:/sbin/nologin
+ftp:x:14:50:FTP User:/var/ftp:/sbin/nologin
+nobody:x:65534:65534:Kernel Overflow User:/:/sbin/nologin
+systemd-coredump:x:999:999:systemd Core Dumper:/:/sbin/nologin
+tss:x:59:59:Account used for TPM access:/:/usr/sbin/nologin
+sssd:x:998:998:User for sssd:/:/sbin/nologin
+sshd:x:74:74:Privilege-separated SSH:/usr/share/empty.sshd:/usr/sbin/nologin
+chrony:x:997:997:chrony system user:/var/lib/chrony:/sbin/nologin
+dbus:x:81:81:System Message Bus:/:/usr/sbin/nologin
+king:x:1000:1000::/home/king:/bin/bash
+games:x:12:100:games:/usr/games:/sbin/nologin
+ftp:x:14:50:FTP User:/var/ftp:/sbin/nologin
+nobody:x:65534:65534:Kernel Overflow User:/:/sbin/nologin
+systemd-coredump:x:999:999:systemd Core Dumper:/:/sbin/nologin
+tss:x:59:59:Account used for TPM access:/:/usr/sbin/nologin
+sssd:x:998:998:User for sssd:/:/sbin/nologin
+sshd:x:74:74:Privilege-separated SSH:/usr/share/empty.sshd:/usr/sbin/nologin
+chrony:x:997:997:chrony system user:/var/lib/chrony:/sbin/nologin
+dbus:x:81:81:System Message Bus:/:/usr/sbin/nologin
+king:x:1000:1000::/home/king:/bin/bash
 ```
 
 ---
 
-### 3.5 文本三剑客（grep / sed / awk）与管道符
+### 3.7 系统信息查看（uname / lscpu / free / ip / hostname）
+
+#### uname
+
+```bash
+[root@node2 ~]# uname
+Linux
+[root@node2 ~]# uname -s
+Linux
+[root@node2 ~]# uname -sr
+Linux 5.14.0-687.10.1.el9_8.0.1.x86_64
+```
+
+#### lscpu
+
+```bash
+[root@node2 ~]# lscpu
+Architecture:                x86_64
+  CPU op-mode(s):            32-bit, 64-bit
+  Address sizes:             45 bits physical, 48 bits virtual
+  Byte Order:                Little Endian
+CPU(s):                      2
+  On-line CPU(s) list:       0,1
+Vendor ID:                   GenuineIntel
+  BIOS Vendor ID:            GenuineIntel
+  Model name:                13th Gen Intel(R) Core(TM) i7-13700H
+    BIOS Model name:         13th Gen Intel(R) Core(TM) i7-13700H
+    CPU family:              6
+    Model:                   186
+    Thread(s) per core:      1
+    Core(s) per socket:      2
+    Socket(s):               1
+    Stepping:                2
+    BogoMIPS:                5836.79
+    Flags:                   fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pa
+                             t pse36 clflush mmx fxsr sse sse2 ss ht syscall nx pdpe1gb rdtsc
+                             p lm constant_tsc arch_perfmon rep_good nopl xtopology tsc_relia
+                             ble nonstop_tsc cpuid tsc_known_freq pni pclmulqdq ssse3 fma cx1
+                             6 pcid sse4_1 sse4_2 x2apic movbe popcnt aes xsave avx f16c rdra
+                             nd hypervisor lahf_lm abm 3dnowprefetch pti ssbd ibrs ibpb stibp
+                              fsgsbase tsc_adjust bmi1 avx2 smep bmi2 erms invpcid rdseed adx
+                              smap clflushopt clwb sha_ni xsaveopt xsavec xgetbv1 xsaves avx_
+                             vnni arat umip gfni vaes vpclmulqdq rdpid movdiri movdir64b fsrm
+                              md_clear serialize flush_l1d arch_capabilities
+Virtualization features:     
+  Hypervisor vendor:         VMware
+  Virtualization type:       full
+Caches (sum of all):         
+  L1d:                       96 KiB (2 instances)
+  L1i:                       64 KiB (2 instances)
+  L2:                        2.5 MiB (2 instances)
+  L3:                        24 MiB (1 instance)
+NUMA:                        
+  NUMA node(s):              1
+  NUMA node0 CPU(s):         0,1
+Vulnerabilities:             
+  Gather data sampling:      Not affected
+  Indirect target selection: Mitigation; Aligned branch/return thunks
+  Itlb multihit:             Not affected
+  L1tf:                      Mitigation; PTE Inversion
+  Mds:                       Mitigation; Clear CPU buffers; SMT Host state unknown
+  Meltdown:                  Mitigation; PTI
+  Mmio stale data:           Not affected
+  Old microcode:             Not affected
+  Reg file data sampling:    Vulnerable: No microcode
+  Retbleed:                  Mitigation; IBRS
+  Spec rstack overflow:      Not affected
+  Spec store bypass:         Mitigation; Speculative Store Bypass disabled via prctl
+  Spectre v1:                Mitigation; usercopy/swapgs barriers and __user pointer sanitiza
+                             tion
+  Spectre v2:                Mitigation; IBRS; IBPB conditional; STIBP disabled; RSB filling;
+                              PBRSB-eIBRS Not affected; BHI SW loop, KVM SW loop
+  Srbds:                     Not affected
+  Tsa:                       Not affected
+  Tsx async abort:           Not affected
+  Vmscape:                   Not affected
+
+[root@node2 ~]# cat /proc/cpuinfo 
+processor       : 0
+vendor_id       : GenuineIntel
+cpu family      : 6
+model           : 186
+model name      : 13th Gen Intel(R) Core(TM) i7-13700H
+stepping        : 2
+microcode       : 0xffffffff
+cpu MHz         : 2918.398
+cache size      : 24576 KB
+physical id     : 0
+siblings        : 2
+core id         : 0
+cpu cores       : 2
+apicid          : 0
+initial apicid  : 0
+fpu             : yes
+fpu_exception   : yes
+cpuid level     : 32
+wp              : yes
+flags           : fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ss ht syscall nx pdpe1gb rdtscp lm constant_tsc arch_perfmon rep_good nopl xtopology tsc_reliable nonstop_tsc cpuid tsc_known_freq pni pclmulqdq ssse3 fma cx16 pcid sse4_1 sse4_2 x2apic movbe popcnt aes xsave avx f16c rdrand hypervisor lahf_lm abm 3dnowprefetch pti ssbd ibrs ibpb stibp fsgsbase tsc_adjust bmi1 avx2 smep bmi2 erms invpcid rdseed adx smap clflushopt clwb sha_ni xsaveopt xsavec xgetbv1 xsaves avx_vnni arat umip gfni vaes vpclmulqdq rdpid movdiri movdir64b fsrm md_clear serialize flush_l1d arch_capabilities
+bugs            : cpu_meltdown spectre_v1 spectre_v2 spec_store_bypass l1tf mds swapgs retbleed rfds bhi spectre_v2_user its
+bogomips        : 5836.79
+clflush size    : 64
+cache_alignment : 64
+address sizes   : 45 bits physical, 48 bits virtual
+power management:
+
+processor       : 1
+vendor_id       : GenuineIntel
+cpu family      : 6
+model           : 186
+model name      : 13th Gen Intel(R) Core(TM) i7-13700H
+stepping        : 2
+microcode       : 0xffffffff
+cpu MHz         : 2918.398
+cache size      : 24576 KB
+physical id     : 0
+siblings        : 2
+core id         : 1
+cpu cores       : 2
+apicid          : 1
+initial apicid  : 1
+fpu             : yes
+fpu_exception   : yes
+cpuid level     : 32
+wp              : yes
+flags           : fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ss ht syscall nx pdpe1gb rdtscp lm constant_tsc arch_perfmon rep_good nopl xtopology tsc_reliable nonstop_tsc cpuid tsc_known_freq pni pclmulqdq ssse3 fma cx16 pcid sse4_1 sse4_2 x2apic movbe popcnt aes xsave avx f16c rdrand hypervisor lahf_lm abm 3dnowprefetch pti ssbd ibrs ibpb stibp fsgsbase tsc_adjust bmi1 avx2 smep bmi2 erms invpcid rdseed adx smap clflushopt clwb sha_ni xsaveopt xsavec xgetbv1 xsaves avx_vnni arat umip gfni vaes vpclmulqdq rdpid movdiri movdir64b fsrm md_clear serialize flush_l1d arch_capabilities
+bugs            : cpu_meltdown spectre_v1 spectre_v2 spec_store_bypass l1tf mds swapgs retbleed rfds bhi spectre_v2_user its
+bogomips        : 5836.79
+clflush size    : 64
+cache_alignment : 64
+address sizes   : 45 bits physical, 48 bits virtual
+power management:
+
+```
+
+#### free
+
+```bash
+[root@node2 ~]# free
+               total        used        free      shared  buff/cache   available
+Mem:         3709924      471684     3266156        9220      192020     3238240
+Swap:        2097148           0     2097148
+
+[root@node2 ~]# cat /proc/meminfo 
+MemTotal:        3709924 kB
+MemFree:         3266216 kB
+MemAvailable:    3238356 kB
+Buffers:            2708 kB
+Cached:           153316 kB
+SwapCached:            0 kB
+Active:           141356 kB
+Inactive:          70900 kB
+Active(anon):      65452 kB
+Inactive(anon):        0 kB
+Active(file):      75904 kB
+Inactive(file):    70900 kB
+Unevictable:           0 kB
+Mlocked:               0 kB
+SwapTotal:       2097148 kB
+SwapFree:        2097148 kB
+Zswap:                 0 kB
+Zswapped:              0 kB
+Dirty:                 0 kB
+Writeback:             0 kB
+AnonPages:         55764 kB
+Mapped:            41864 kB
+Shmem:              9220 kB
+KReclaimable:      36008 kB
+Slab:              98980 kB
+SReclaimable:      36008 kB
+SUnreclaim:        62972 kB
+KernelStack:        4544 kB
+PageTables:         1588 kB
+SecPageTables:         0 kB
+NFS_Unstable:          0 kB
+Bounce:                0 kB
+WritebackTmp:          0 kB
+CommitLimit:     3952108 kB
+Committed_AS:     188136 kB
+VmallocTotal:   34359738367 kB
+VmallocUsed:       23736 kB
+VmallocChunk:          0 kB
+Percpu:            48128 kB
+HardwareCorrupted:     0 kB
+AnonHugePages:      8192 kB
+ShmemHugePages:        0 kB
+ShmemPmdMapped:        0 kB
+FileHugePages:         0 kB
+FilePmdMapped:         0 kB
+CmaTotal:              0 kB
+CmaFree:               0 kB
+Unaccepted:            0 kB
+HugePages_Total:       0
+HugePages_Free:        0
+HugePages_Rsvd:        0
+HugePages_Surp:        0
+Hugepagesize:       2048 kB
+Hugetlb:               0 kB
+DirectMap4k:      147264 kB
+DirectMap2M:     2998272 kB
+DirectMap1G:     3145728 kB
+```
+
+#### ip / ip addr
+
+```bash
+[root@node2 ~]# ip a
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+    inet6 ::1/128 scope host 
+       valid_lft forever preferred_lft forever
+2: ens160: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc mq state UP group default qlen 1000
+    link/ether 00:0c:29:a3:73:e4 brd ff:ff:ff:ff:ff:ff
+    altname enp3s0
+    inet 192.168.128.135/24 brd 192.168.128.255 scope global dynamic noprefixroute ens160
+       valid_lft 1592sec preferred_lft 1592sec
+    inet6 fe80::20c:29ff:fea3:73e4/64 scope link noprefixroute 
+       valid_lft forever preferred_lft forever
+```
+
+#### hostname
+
+```bash
+[root@node2 ~]# hostname
+node2
+```
+
+### 3.8 文本三剑客（grep / sed / awk）与管道符
 
 > 这一节是 Linux 的生产力工具：**grep 找行、sed 改行、awk 拆列**。日志分析、进程排查、批量改配置全靠它们三个加一根管道。
->
 
 | 工具 | 定位 | 核心动作 | 最常用在 |
 |------|------|---------|---------|
@@ -238,7 +757,7 @@ drwxr-xr-x 5 monitor monitor  4096 9月  20 20:48 ..
 
 ---
 
-#### 3.5.1 正则表达式：基本表达式（BRE）与扩展表达式（ERE）
+#### 3.8.1 正则表达式：基本表达式（BRE）与扩展表达式（ERE）
 
 三个工具的模式匹配都建立在正则之上，但**默认方言不同**
 
@@ -273,7 +792,7 @@ grep -E '^[[:digit:]]{3}$' file    # 整行恰好是 3 位数字
 
 ---
 
-#### 3.5.2 grep：按行筛选
+#### 3.8.2 grep：按行筛选
 
 ```bash
 grep [选项] '模式' 文件
@@ -324,7 +843,7 @@ grep -v '/sbin/nologin' /etc/passwd
 
 ---
 
-#### 3.5.3 sed：字符流编辑器
+#### 3.8.3 sed：字符流编辑器
 
 sed 的工作流程：
 
@@ -393,7 +912,7 @@ sed -i.bak 's/monitor/MONITOR/g' dir.txt   # 真正改文件，且先留一份 .
 
 ---
 
-#### 3.5.4 awk：按列处理与格式化输出
+#### 3.8.4 awk：按列处理与格式化输出
 
 awk 的定位：**拥有强大处理能力的格式化输出程序，命令行的 Excel**。强项是「按列拆分 + 统计 + 格式化」。
 
@@ -544,7 +1063,7 @@ printf 的格式化输出方法（**类比 C 语言，很好理解**）：
 
 ---
 
-#### 3.5.5 管道符与组合技
+#### 3.8.5 管道符与组合技
 
 `|` 把**前一个命令的标准输出**接到**后一个命令的标准输入**，是三剑客能串成流水线的关键。
 
@@ -588,7 +1107,7 @@ grep -v '^#' nginx.conf | sed 's/#.*//' | awk '{sum+=$2} END{print sum}'
 
 ---
 
-#### 3.5.6 小结
+#### 3.8.6 小结
 
 > grep 选行、sed 改行、awk 拆列；用 `|` 把它们串起来，就是命令行里最锋利的一套文本处理组合。
 
@@ -607,10 +1126,10 @@ grep -v '^#' nginx.conf | sed 's/#.*//' | awk '{sum+=$2} END{print sum}'
 
 ## 四、Vim 编辑器
 
-| 模式 | 进入方式 |
-|------|---------|
-| 插入模式 | 按 `i / I / o / O / a / A / R` 任意键进入，可自由输入 |
-| 命令行模式 | `Esc` 退出插入模式后输入命令（`:wq` 保存退出等） |
+| 模式       | 进入方式                                              |
+| ---------- | ----------------------------------------------------- |
+| 插入模式   | 按 `i / I / o / O / a / A / R` 任意键进入，可自由输入 |
+| 命令行模式 | `Esc` 退出插入模式后输入命令（`:wq` 保存退出等）      |
 
 ---
 
@@ -676,6 +1195,11 @@ shutdown -r now          # 立即重启
 | — | 所有人 | `a`（all） | `u`+`g`+`o` 的简写，只在改权限时用 |
 
 ```text
+dr-xr-xr-x. 2 root root 6 Nov  3  2024 
+ 				└┬┘└┬┘
+ 				 │  │  
+				 │  └── 属组
+ 				 └───── 属主
 -rwxr-xr-x
  └┬┘└┬┘└┬┘
   │  │  └── o：其他人 → r-x
@@ -884,8 +1408,6 @@ init [0123456]       # 切换不同运行级别
 ```bash
 man ls        # 获得命令或配置文件的帮助信息
 ```
-
-> Linux 中以 `.` 开头的文件是隐藏文件，可组合参数使用，例如 `ls -al /root`。
 
 ### help
 

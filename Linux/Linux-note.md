@@ -620,9 +620,9 @@ CREATE_MAIL_SPOOL=yes
 
 ```
 
-#### shadow用户密码文件
+#### shadow 用户密码文件
 
-```
+```bash
 [root@beta mail]# cat  /etc/shadow
 root:$6$/J6CF7p6ijGJPYny$aJM0oswfnj4KCFc.vr7521eGTiQyAQ4ta0OpFZZ0HgN5TgcdxZXCdIdtpouascX4Ls78piuMojfm/1QZ0UCh6.::0:99999:7:::
 
@@ -634,7 +634,7 @@ account:$6$rounds=100000$y7jwUhEDgYGfMTHZ$KYFmr6Qd6i9YFPl2dGU6fMZOoTcN0cqkVKEkFf
 change -d 0 usename #可以让用户登录后强制更改密码
 ```
 
-
+---
 
 ## 五、登录注销与关机重启
 
@@ -645,7 +645,7 @@ shutdown -h 1 "hello"    # 1 分钟后关机并广播提示
 shutdown -r now          # 立即重启
 ```
 
-
+---
 
 ## 六、用户与用户组管理
 
@@ -675,7 +675,7 @@ passwd: all authentication tokens updated successfully.
 
 其他的操作
 
-```
+```bash
 userdel username	#删除用户但保留家目录（一般推荐保留）
 
 userdel -r username #删除用户并删除家目录

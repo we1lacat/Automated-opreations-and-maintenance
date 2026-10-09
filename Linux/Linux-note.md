@@ -25,12 +25,12 @@ Last login: Wed Oct  7 15:45:25 2026
 #参数-可来自传递或键入
 ```
 
-
+---
 
 ## 二、目录结构
 
 | 目录 | 说明 |
-|------|------|
+| --- | --- |
 | `/` | 根目录 |
 | `/root` | 超级管理员家目录 |
 | `/home` | 存放不同用户的家目录 |
@@ -57,7 +57,7 @@ Last login: Wed Oct  7 15:45:25 2026
 ### 3.1 路径
 
 | 类型 | 定位起点 | 示例 |
-|------|---------|------|
+| --- | --- | --- |
 | 绝对路径 | 从根目录 `/` 开始定位 | `/nono/etc/good apple.txt` |
 | 相对路径 | 从当前目录开始定位 | `etc/good apple.txt` |
 
@@ -66,7 +66,7 @@ Last login: Wed Oct  7 15:45:25 2026
 `ls -l` 输出的**第一个字符**就是文件类型（`ls --color` 会再用颜色区分一次）：
 
 | 标识 | 类型 | 颜色 |
-|------|------|------|
+| --- | --- | --- |
 | `-` | 普通文件 | 默认 |
 | `d` | 目录 | 蓝色 |
 | `l` | 链接文件（软链接） | 浅蓝色 |
@@ -78,7 +78,7 @@ Last login: Wed Oct  7 15:45:25 2026
 ### 3.3 常用快捷键（bash 行编辑）
 
 | 快捷键 | 作用 |
-|--------|------|
+| --- | --- |
 | `Ctrl + C` | 终止 / 中断当前正在执行的命令 |
 | `Ctrl + A` | 光标跳到行首 |
 | `Ctrl + E` | 光标跳到行尾 |
@@ -100,22 +100,19 @@ cd ../../root      # 从 nono 回到 root（多级向上）
 
 相对路径和绝对路径
 
-```
+```bash
 [king@node2 ~]$ cd /home/king/apple/futa/badend/
 [king@node2 badend]$ pwd
 /home/king/apple/futa/badend
-[king@node2 badend]$ cd /home/king/
-[king@node2 ~]$ pwd
-/home/king
+
 [king@node2 ~]$ cd apple/futa/badend/
 [king@node2 badend]$ pwd
 /home/king/apple/futa/badend
-[king@node2 badend]$ 
 ```
 
 相对于工作目录和绝对与于根目录
 
-```
+```bash
 #.当前目录
 #..上级目录
 #通过ls-la明显得出
@@ -134,8 +131,6 @@ drwxr-xr-x. 3 king king 20 Oct  7 17:17 ..
 [king@node2 futa]$ pwd
 /home/king/apple/futa
 ```
-
-
 
 #### mkdir
 
@@ -198,7 +193,7 @@ apple  kingdir  logs1.txt  test
 [king@node2 ~]$ rm -rf test/
 [king@node2 ~]$ ls
 apple  kingdir  logs1.txt
-[king@node2 ~]$ 
+[king@node2 ~]$
 ```
 
 #### touch
@@ -229,7 +224,7 @@ apple  kingdir  test
 [king@node2 ~]$ cp test/dics1.txt kingdir/
 [king@node2 ~]$ ls kingdir/
 dics1.txt
-[king@node2 ~]$ cp test/dics2.txt test/dics.txt 
+[king@node2 ~]$ cp test/dics2.txt test/dics.txt
 [king@node2 ~]$ ls kingdir/
 dics1.txt
 [king@node2 ~]$ cd test/
@@ -267,8 +262,19 @@ king
 ^[[D[king@node2 ~]$ cd apple/
 [king@node2 apple]$ ls
 futa  lover.txt
-[king@node2 apple]$ 
+[king@node2 apple]$
 ```
+
+---
+
+## 四、Vim 编辑器
+
+| 模式       | 进入方式                                              |
+| --- | --- |
+| 插入模式   | 按 `i / I / o / O / a / A / R` 任意键进入，可自由输入 |
+| 命令行模式 | `Esc` 退出插入模式后输入命令（`:wq` 保存退出等）      |
+
+---
 
 ### 3.5 文件查看
 
@@ -322,8 +328,8 @@ king:x:1000:1000::/home/king:/bin/bash
     18  chrony:x:997:997:chrony system user:/var/lib/chrony:/sbin/nologin
     19  dbus:x:81:81:System Message Bus:/:/usr/sbin/nologin
     20  king:x:1000:1000::/home/king:/bin/bash
-    
-    
+
+
 [king@node2 apple]$ cat /etc/passwd|more
 root:x:0:0:root:/root:/bin/bash
 bin:x:1:1:bin:/bin:/sbin/nologin
@@ -447,7 +453,7 @@ king:x:1000:1000::/home/king:/bin/bash
 ### 3.6 输出重定向
 
 | 符号 | 作用 |
-|------|------|
+| --- | --- |
 | `>` | 输出重定向（覆盖） |
 | `>>` | 输出重定向（追加） |
 
@@ -513,118 +519,16 @@ Linux 5.14.0-687.10.1.el9_8.0.1.x86_64
 ```bash
 [root@node2 ~]# lscpu
 Architecture:                x86_64
-  CPU op-mode(s):            32-bit, 64-bit
-  Address sizes:             45 bits physical, 48 bits virtual
-  Byte Order:                Little Endian
-CPU(s):                      2
-  On-line CPU(s) list:       0,1
-Vendor ID:                   GenuineIntel
-  BIOS Vendor ID:            GenuineIntel
-  Model name:                13th Gen Intel(R) Core(TM) i7-13700H
-    BIOS Model name:         13th Gen Intel(R) Core(TM) i7-13700H
-    CPU family:              6
-    Model:                   186
-    Thread(s) per core:      1
-    Core(s) per socket:      2
-    Socket(s):               1
-    Stepping:                2
-    BogoMIPS:                5836.79
-    Flags:                   fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pa
-                             t pse36 clflush mmx fxsr sse sse2 ss ht syscall nx pdpe1gb rdtsc
-                             p lm constant_tsc arch_perfmon rep_good nopl xtopology tsc_relia
-                             ble nonstop_tsc cpuid tsc_known_freq pni pclmulqdq ssse3 fma cx1
-                             6 pcid sse4_1 sse4_2 x2apic movbe popcnt aes xsave avx f16c rdra
-                             nd hypervisor lahf_lm abm 3dnowprefetch pti ssbd ibrs ibpb stibp
-                              fsgsbase tsc_adjust bmi1 avx2 smep bmi2 erms invpcid rdseed adx
-                              smap clflushopt clwb sha_ni xsaveopt xsavec xgetbv1 xsaves avx_
-                             vnni arat umip gfni vaes vpclmulqdq rdpid movdiri movdir64b fsrm
-                              md_clear serialize flush_l1d arch_capabilities
-Virtualization features:     
-  Hypervisor vendor:         VMware
-  Virtualization type:       full
-Caches (sum of all):         
-  L1d:                       96 KiB (2 instances)
-  L1i:                       64 KiB (2 instances)
-  L2:                        2.5 MiB (2 instances)
-  L3:                        24 MiB (1 instance)
-NUMA:                        
-  NUMA node(s):              1
-  NUMA node0 CPU(s):         0,1
-Vulnerabilities:             
-  Gather data sampling:      Not affected
-  Indirect target selection: Mitigation; Aligned branch/return thunks
-  Itlb multihit:             Not affected
-  L1tf:                      Mitigation; PTE Inversion
-  Mds:                       Mitigation; Clear CPU buffers; SMT Host state unknown
-  Meltdown:                  Mitigation; PTI
-  Mmio stale data:           Not affected
-  Old microcode:             Not affected
-  Reg file data sampling:    Vulnerable: No microcode
-  Retbleed:                  Mitigation; IBRS
-  Spec rstack overflow:      Not affected
-  Spec store bypass:         Mitigation; Speculative Store Bypass disabled via prctl
-  Spectre v1:                Mitigation; usercopy/swapgs barriers and __user pointer sanitiza
-                             tion
-  Spectre v2:                Mitigation; IBRS; IBPB conditional; STIBP disabled; RSB filling;
-                              PBRSB-eIBRS Not affected; BHI SW loop, KVM SW loop
-  Srbds:                     Not affected
-  Tsa:                       Not affected
-  Tsx async abort:           Not affected
+ .
+.
+.
   Vmscape:                   Not affected
 
-[root@node2 ~]# cat /proc/cpuinfo 
+[root@node2 ~]# cat /proc/cpuinfo
 processor       : 0
-vendor_id       : GenuineIntel
-cpu family      : 6
-model           : 186
-model name      : 13th Gen Intel(R) Core(TM) i7-13700H
-stepping        : 2
-microcode       : 0xffffffff
-cpu MHz         : 2918.398
-cache size      : 24576 KB
-physical id     : 0
-siblings        : 2
-core id         : 0
-cpu cores       : 2
-apicid          : 0
-initial apicid  : 0
-fpu             : yes
-fpu_exception   : yes
-cpuid level     : 32
-wp              : yes
-flags           : fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ss ht syscall nx pdpe1gb rdtscp lm constant_tsc arch_perfmon rep_good nopl xtopology tsc_reliable nonstop_tsc cpuid tsc_known_freq pni pclmulqdq ssse3 fma cx16 pcid sse4_1 sse4_2 x2apic movbe popcnt aes xsave avx f16c rdrand hypervisor lahf_lm abm 3dnowprefetch pti ssbd ibrs ibpb stibp fsgsbase tsc_adjust bmi1 avx2 smep bmi2 erms invpcid rdseed adx smap clflushopt clwb sha_ni xsaveopt xsavec xgetbv1 xsaves avx_vnni arat umip gfni vaes vpclmulqdq rdpid movdiri movdir64b fsrm md_clear serialize flush_l1d arch_capabilities
-bugs            : cpu_meltdown spectre_v1 spectre_v2 spec_store_bypass l1tf mds swapgs retbleed rfds bhi spectre_v2_user its
-bogomips        : 5836.79
-clflush size    : 64
-cache_alignment : 64
-address sizes   : 45 bits physical, 48 bits virtual
-power management:
-
-processor       : 1
-vendor_id       : GenuineIntel
-cpu family      : 6
-model           : 186
-model name      : 13th Gen Intel(R) Core(TM) i7-13700H
-stepping        : 2
-microcode       : 0xffffffff
-cpu MHz         : 2918.398
-cache size      : 24576 KB
-physical id     : 0
-siblings        : 2
-core id         : 1
-cpu cores       : 2
-apicid          : 1
-initial apicid  : 1
-fpu             : yes
-fpu_exception   : yes
-cpuid level     : 32
-wp              : yes
-flags           : fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ss ht syscall nx pdpe1gb rdtscp lm constant_tsc arch_perfmon rep_good nopl xtopology tsc_reliable nonstop_tsc cpuid tsc_known_freq pni pclmulqdq ssse3 fma cx16 pcid sse4_1 sse4_2 x2apic movbe popcnt aes xsave avx f16c rdrand hypervisor lahf_lm abm 3dnowprefetch pti ssbd ibrs ibpb stibp fsgsbase tsc_adjust bmi1 avx2 smep bmi2 erms invpcid rdseed adx smap clflushopt clwb sha_ni xsaveopt xsavec xgetbv1 xsaves avx_vnni arat umip gfni vaes vpclmulqdq rdpid movdiri movdir64b fsrm md_clear serialize flush_l1d arch_capabilities
-bugs            : cpu_meltdown spectre_v1 spectre_v2 spec_store_bypass l1tf mds swapgs retbleed rfds bhi spectre_v2_user its
-bogomips        : 5836.79
-clflush size    : 64
-cache_alignment : 64
-address sizes   : 45 bits physical, 48 bits virtual
+.
+.
+.
 power management:
 
 ```
@@ -637,63 +541,12 @@ power management:
 Mem:         3709924      471684     3266156        9220      192020     3238240
 Swap:        2097148           0     2097148
 
-[root@node2 ~]# cat /proc/meminfo 
+[root@node2 ~]# cat /proc/meminfo
 MemTotal:        3709924 kB
-MemFree:         3266216 kB
-MemAvailable:    3238356 kB
-Buffers:            2708 kB
-Cached:           153316 kB
-SwapCached:            0 kB
-Active:           141356 kB
-Inactive:          70900 kB
-Active(anon):      65452 kB
-Inactive(anon):        0 kB
-Active(file):      75904 kB
-Inactive(file):    70900 kB
-Unevictable:           0 kB
-Mlocked:               0 kB
-SwapTotal:       2097148 kB
-SwapFree:        2097148 kB
-Zswap:                 0 kB
-Zswapped:              0 kB
-Dirty:                 0 kB
-Writeback:             0 kB
-AnonPages:         55764 kB
-Mapped:            41864 kB
-Shmem:              9220 kB
-KReclaimable:      36008 kB
-Slab:              98980 kB
-SReclaimable:      36008 kB
-SUnreclaim:        62972 kB
-KernelStack:        4544 kB
-PageTables:         1588 kB
-SecPageTables:         0 kB
-NFS_Unstable:          0 kB
-Bounce:                0 kB
-WritebackTmp:          0 kB
-CommitLimit:     3952108 kB
-Committed_AS:     188136 kB
-VmallocTotal:   34359738367 kB
-VmallocUsed:       23736 kB
-VmallocChunk:          0 kB
-Percpu:            48128 kB
-HardwareCorrupted:     0 kB
-AnonHugePages:      8192 kB
-ShmemHugePages:        0 kB
-ShmemPmdMapped:        0 kB
-FileHugePages:         0 kB
-FilePmdMapped:         0 kB
-CmaTotal:              0 kB
-CmaFree:               0 kB
-Unaccepted:            0 kB
-HugePages_Total:       0
-HugePages_Free:        0
-HugePages_Rsvd:        0
-HugePages_Surp:        0
-Hugepagesize:       2048 kB
-Hugetlb:               0 kB
-DirectMap4k:      147264 kB
-DirectMap2M:     2998272 kB
+.
+.
+.
+
 DirectMap1G:     3145728 kB
 ```
 
@@ -705,14 +558,14 @@ DirectMap1G:     3145728 kB
     link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
     inet 127.0.0.1/8 scope host lo
        valid_lft forever preferred_lft forever
-    inet6 ::1/128 scope host 
+    inet6 ::1/128 scope host
        valid_lft forever preferred_lft forever
 2: ens160: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc mq state UP group default qlen 1000
     link/ether 00:0c:29:a3:73:e4 brd ff:ff:ff:ff:ff:ff
     altname enp3s0
     inet 192.168.128.135/24 brd 192.168.128.255 scope global dynamic noprefixroute ens160
        valid_lft 1592sec preferred_lft 1592sec
-    inet6 fe80::20c:29ff:fea3:73e4/64 scope link noprefixroute 
+    inet6 fe80::20c:29ff:fea3:73e4/64 scope link noprefixroute
        valid_lft forever preferred_lft forever
 ```
 
@@ -721,14 +574,343 @@ DirectMap1G:     3145728 kB
 ```bash
 [root@node2 ~]# hostname
 node2
+
 ```
+
+#### passwd 用户信息文件
+
+```bash
+[root@beta ~]# cat /etc/passwd
+root:x:0:0:root:/root:/bin/bash
+bin:x:1:1:bin:/bin:/sbin/nologin
+.
+.
+.
+king:x:1000:1000::/home/king:/bin/bash
+#用户名：密码占位符：uid:基本组id:用户描述信息：家目录：解释器程序
+# 0		 		超级用户
+# 1-999	 		系统伪用户
+# 1000-65635	普通用户
+echo password |passwd --stdin #脚本用的多些
+```
+
+关于解释器补充一些，其他见shell
+
+```bash
+[root@beta ~]# /bin/sh
+sh-5.1# ls
+ae.txt  anaconda-ks.cfg
+sh-5.1# cd
+sh-5.1# /bin/bash
+#bash是大部分情况使用的，但可以指定解释器
+```
+
+#### useradd 创建用户默认信息
+
+```bash
+[root@beta home]# cat /etc/default/useradd
+# useradd defaults file
+GROUP=100
+HOME=/home
+INACTIVE=-1
+EXPIRE=
+SHELL=/bin/bash
+SKEL=/etc/skel
+CREATE_MAIL_SPOOL=yes
+
+```
+
+#### shadow用户密码文件
+
+```
+[root@beta mail]# cat  /etc/shadow
+root:$6$/J6CF7p6ijGJPYny$aJM0oswfnj4KCFc.vr7521eGTiQyAQ4ta0OpFZZ0HgN5TgcdxZXCdIdtpouascX4Ls78piuMojfm/1QZ0UCh6.::0:99999:7:::
+
+...
+
+king:$6$rounds=100000$P1vUGPZeEWKRxeUV$CI.oL0Oe9J7odMM6MZoRuxDj5wAp3wYDT5PTtLuz5AWFxXeoDPXgJXTrbXZRdp3uLm2eh3DZ/u..Cr5taalof/:20733:0:99999:7:::
+account:$6$rounds=100000$y7jwUhEDgYGfMTHZ$KYFmr6Qd6i9YFPl2dGU6fMZOoTcN0cqkVKEkFfFeuTydMH/7P3U2p//0cmtoz6TZtN6yuz6U8eUVSBjW7wWWV0:20735:0:99999:7:::
+#相关字段了解即可
+change -d 0 usename #可以让用户登录后强制更改密码
+```
+
+
+
+## 五、登录注销与关机重启
+
+```bash
+shutdown -h now          # 立即关机
+halt                     # 立即关机（同上）
+shutdown -h 1 "hello"    # 1 分钟后关机并广播提示
+shutdown -r now          # 立即重启
+```
+
+
+
+## 六、用户与用户组管理
+
+> root 用户可创建多用户并进行管理（用户目录在 `/home` 中）。
+
+### 6.1 用户操作
+
+`useradd   username`  添加用户（默认创建同名家目录与同名组）
+
+```text
+u 指定uid
+-g meme 指定组
+-G king  附加组
+-c 'test account' 指定信息
+```
+
+`passwd username `设置/修改密码（不写用户名默认改当前用户）
+
+```bash
+[root@beta mail]# passwd account
+Changing password for user account.
+New password:
+Retype new password:
+passwd: all authentication tokens updated successfully.
+#注意密码规范且能记住即可，但是忘记不能查询
+```
+
+其他的操作
+
+```
+userdel username	#删除用户但保留家目录（一般推荐保留）
+
+userdel -r username #删除用户并删除家目录
+
+id username #查询用户 是否存在及其信息
+
+su - username #切换用户，高级切低级是不需要密码de
+
+whoami / who am i #查询当前登录系统的用户信息
+```
+
+### 6.2 用户组
+
+> 类似角色，对具有共性/相同权限的用户进行统一管理。
+
+| 命令                            | 作用             | 示例                         |
+| --- | --- | --- |
+| `groupadd groupname`            | 添加用户组       | `groupadd meme`              |
+| `groupdel groupname`            | 删除用户组       | `groupdel meme`              |
+| `useradd -g groupname username` | 添加用户到指定组 | `useradd -g huanglong jinxi` |
+| `usermod -g usergroup username` | 更改用户所属组   | —                            |
+
+> 未指定组时，`useradd` 会默认创建与用户同名的组。
+
+---
+
+## 七、权限管理（chmod / chown）
+
+> `chmod` = **ch**ange **mod**e，修改文件或目录的权限。只有**文件属主**或 **root** 能改，普通用户**不能靠它提权**。
+> `chown` / `chgrp` 负责改**属主、属组**。「权限位 + 属主 + 属组」三样合起来，才回答得了「谁能对这个文件做什么」。
+
+### 7.1 权限怎么读：九个字符 + 三类身份
+
+`ls -l` 第一列（如 `-rwxr-xr-x`）去掉开头的类型位，剩下 **9 个字符、每 3 个一组**：
+
+| 分组    | 身份   | 简写         | 说明                               |
+| --- | --- | --- | --- |
+| 第 1 组 | 属主   | `u`（user）  | 文件的拥有者                       |
+| 第 2 组 | 属组   | `g`（group） | 文件所属组的成员                   |
+| 第 3 组 | 其他人 | `o`（other） | 既不是属主、也不在属组里的用户     |
+| —       | 所有人 | `a`（all）   | `u`+`g`+`o` 的简写，只在改权限时用 |
+
+```text
+dr-xr-xr-x. 2 root root 6 Nov  3  2024
+ 				└┬┘└┬┘
+ 				 │  │
+				 │  └── 属组
+ 				 └───── 属主
+-rwxr-xr-x
+ └┬┘└┬┘└┬┘
+  │  │  └── o：其他人 → r-x
+  │  └───── g：属组   → r-x
+  └──────── u：属主   → rwx
+```
+
+### 7.2 同一个权限位，在文件上和目录的差异
+
+这是最容易被含糊过去的一点：
+
+| 权限 | 对**文件**                   | 对**目录**                             |
+| --- | --- | --- |
+| `r`  | 可以读取内容（`cat`）        | 可以列出里面有哪些文件（`ls`）         |
+| `w`  | 可以修改内容                 | 可以**创建 / 删除 / 重命名**里面的文件 |
+| `x`  | 可以作为程序执行（`./a.sh`） | 可以进入该目录（`cd`）、访问里面的文件 |
+
+> **只给目录 `w` 不给 `x` 是无效的**：能建文件却进不去、也删不掉。目录至少要 `r-x`（即 5）才可用。
+> 反过来，**能不能删掉一个文件，看的是它所在目录的 `w`，而不是文件自己的 `w`**——这一点与 Windows 的直觉相反。所以防误删的有效手段是把目录设成 `555`，而不是给文件去掉写权限。
+
+### 7.3 数字模式
+
+`r=4`、`w=2`、`x=1`，三位相加得到一个数字，三个数字依次对应 u / g / o：
+
+```text
+7 = rwx      6 = rw-      5 = r-x      4 = r--
+3 = -wx      2 = -w-      1 = --x      0 = ---
+```
+
+`chmod 755 dir` 就是：属主 `rwx`、属组 `r-x`、其他人 `r-x`。
+
+| 命令             | 等价权限    | 典型用途                                 |
+| --- | --- | --- |
+| `chmod 644 file` | `rw-r--r--` | 普通文件（网页、配置、源码），**最常用** |
+| `chmod 600 file` | `rw-------` | 私密文件，如 `id_rsa` 私钥               |
+| `chmod 755 dir`  | `rwxr-xr-x` | 目录、可执行程序                         |
+| `chmod 700 dir`  | `rwx------` | 私有目录（家目录默认就是这个）           |
+| `chmod 777 file` | `rwxrwxrwx` | ⚠️ 所有人全权限，危险，别用               |
+
+### 7.4 符号模式
+
+格式：
+
+```bash
+chmod [ugoa][+-=][rwxXst] 文件
+```
+
+| 部分 | 取值                       | 含义                         |
+| --- | --- | --- |
+| 身份 | `u` / `g` / `o` / `a`      | 不写默认 `a`（所有人）       |
+| 操作 | `+` 加 / `-` 减 / `=` 设为 | `=` 会把没列出的权限一并清掉 |
+| 权限 | `r` `w` `x`                | 此外还有 `X` `s` `t`，见下   |
+
+```bash
+chmod +x script.sh          # 给所有人加执行权限（脚本变可执行）
+chmod u+x script.sh         # 只给属主加执行
+chmod go-w file             # 去掉属组和其他人的写权限
+chmod a+r file              # 所有人可读
+chmod u=rwx,g=rx,o= file    # 等价于 chmod 750
+chmod -R u+rwX,go+rX dir    # 递归设置目录树的常用组合
+```
+
+> 大写 **`X`** 是小写 `x` 的「条件版本」：**只有目录、或原本就带执行权限的文件**才会被加上 `x`。递归处理目录树时必须用它——否则一条 `-R a+x` 会把 `.c`、`.h`、`.txt` 全变成「可执行文件」，既难看又给源码平白加了执行位。
+
+### 7.5 特殊权限：setuid / setgid / sticky
+
+四位数字模式的第一位就是特殊权限位：
+
+| 数字 | 名称               | 符号写法         | 作用                                               | 在 `ls -l` 里长这样 |
+| --- | --- | --- | --- | --- |
+| 4    | **setuid**（SUID） | `chmod u+s file` | 执行时**以文件属主的身份**运行，而不是调用者身份   | `-rwsr-xr-x`        |
+| 2    | **setgid**（SGID） | `chmod g+s dir`  | 目录下新建的文件**继承该目录的属组**               | `drwxr-sr-x`        |
+| 1    | **sticky**         | `chmod +t dir`   | 目录里只有**文件属主、目录属主或 root** 能删除文件 | `drwxrwxrwt`        |
+
+```bash
+chmod 4755 file    # setuid
+chmod 2755 dir     # setgid：目录里新建文件自动归属该组，团队共享目录常这么配
+chmod 1777 /tmp    # sticky：人人可写、但只能删自己的文件
+```
+
+> **`/tmp` 的 `1777` 就是 sticky 的经典应用**——所以谁都能在 `/tmp` 里建文件，却删不掉别人的。
+> `setuid` 是把双刃剑：`passwd` 让普通用户也能改密码（它要写 `/etc/shadow`），靠的正是 setuid。但别自己随手给程序加 setuid，一旦程序有输入漏洞，攻击者就能借它拿 root。
+
+### 7.6 改属主与属组：chown / chgrp
+
+权限位和属主是两件独立的事：**属主不对，`chmod` 给再多权限也没用**。
+
+| 命令                    | 作用             | 示例                                   |
+| --- | --- | --- |
+| `chown 用户 文件`       | 改属主           | `chown monitor /home/monitor/makefile` |
+| `chgrp 组 文件`         | 改属组           | `chgrp monitor /home/monitor/makefile` |
+| `chown 用户:组 文件`    | 同时改属主与属组 | `chown monitor:monitor file`           |
+| `chown -R 用户:组 目录` | 递归改整个目录树 | `chown -R monitor:monitor .`           |
+| `stat -c '%U %G' 文件`  | 只看属主与属组   | `stat -c '%U %G' makefile`             |
+
+```text
+# 改之前
+$ stat -c '%U %G' makefile
+root root
+
+$ chown monitor /home/monitor/makefile
+$ chgrp monitor /home/monitor/makefile
+
+# 改之后
+$ stat -c '%U %G' makefile
+monitor monitor
+```
+
+> **只有 root 能把文件「送」给别人。** 普通用户不能 `chown` 给他人（哪怕是想把自己的文件交出去也不行，这是防止绕开配额与审计的机制），所以 `chown` 实际都由 root / sudo 执行。
+
+### 7.7 实战：把 root 建的目录交还给普通用户
+
+典型场景：用 root 编译或拷贝了一堆文件到某个用户的目录下，属主全是 `root`，用户自己改不了也删不掉。
+
+```text
+$ ls -l /home/monitor/makefile
+-rw-r--r-- 1 root root   169 Sep 17 14:37 cal.c
+-rw-r--r-- 1 root root   432 Sep 17 14:37 in.c
+-rw-r--r-- 1 root root    93 Sep 17 14:30 makefile
+-rw-r--r-- 1 root root   264 Sep 17 14:37 out.c
+-rwxr-xr-x 1 root root 26112 Sep 17 14:38 stuscore      ← 可执行文件
+-rw-r--r-- 1 root root   274 Sep 17 14:37 stuscore.c
+-rw-r--r-- 1 root root   187 Sep 17 14:37 stuscore.h
+```
+
+处理顺序是「**先改属主 → 再按目录/文件分别设权限 → 最后单独补可执行位**」：
+
+```bash
+# ① 递归改属主属组（这是根因；权限位再对，属主不对也没用）
+chown -R monitor:monitor .
+
+# ② 目录统一 755、文件统一 644（用 find 区分类型，而不是一把 -R 755）
+find . -type d -exec chmod 755 {} +
+find . -type f -exec chmod 644 {} +
+
+# ③ 只给需要执行的那个文件补执行位
+chmod 755 stuscore
+
+# ④ 核对
+ls -la
+```
+
+```text
+-rw-r--r-- 1 monitor monitor   169 Sep 17 14:37 cal.c
+-rw-r--r-- 1 monitor monitor   432 Sep 17 14:37 in.c
+-rw-r--r-- 1 monitor monitor    93 Sep 17 14:30 makefile
+-rw-r--r-- 1 monitor monitor   264 Sep 17 14:37 out.c
+-rwxr-xr-x 1 monitor monitor 26112 Sep 17 14:38 stuscore     ← 执行位保留
+-rw-r--r-- 1 monitor monitor   274 Sep 17 14:37 stuscore.c
+-rw-r--r-- 1 monitor monitor   187 Sep 17 14:37 stuscore.h
+```
+
+> **为什么不直接 `chmod -R 755 .`**：那样 `.c`、`.h`、`makefile` 全带上执行位，`ls` 输出一片高亮，看着就乱，给源码加执行位也毫无意义。「**目录 755 + 文件 644 + 需要执行的单独设**」这套三步法适用于绝大多数目录树。
+> `find ... -exec chmod ... {} +` 结尾的 `{} +` 表示**把所有匹配到的路径一次性传给同一个 chmod 进程**；换成 `{} \;` 则是每个文件起一个进程，文件多了会慢一个量级。
+
+### 7.8 避坑清单
+
+| 坑                           | 说明                                                         |
+| --- | --- |
+| `chmod -R 777 /`             | ⚠️ **绝对不能执行**。整个系统权限全开、安全归零，且没有一次性回滚的办法。 |
+| 报 `Operation not permitted` | 你不是文件属主、也不是 root。**`chmod` 不能提权**，只能由管理员用 `sudo` / `chown` / `setfacl` 处理。 |
+| 改了权限还是不能写           | 先看属主对不对（`ls -l` 第三列）；属主不对就先 `chown`。     |
+| 给目录加了 `w` 仍进不去      | 目录缺 `x`，补上（`chmod u+rwx dir`）。                      |
+| `cp` 过来属主变了            | `cp` 默认把属主设成**当前操作用户**；要保留权限与时间戳加 `-p`，属主本身仍需 root 才能改。 |
+| 图省事用 `-R 777`            | 反面教材。该改的是属主与属组，不是把门全打开。               |
+
+### 7.9 小结
+
+> 权限 = 「属主 / 属组 / 其他人」各 3 位；读 `r`(4)、写 `w`(2)、执行 `x`(1)；落到目录上分别意味着「能列出文件」「能增删文件」「能进去」。**属主不对先 `chown`，权限不对再 `chmod`。**
+
+**六条核心**：
+
+1. `chmod` 改权限位，`chown` / `chgrp` 改属主属组，**属主是前提**；
+2. 三位一组依次对应 u / g / o，`a` 是三者之和；
+3. 目录的 `w` 管「能不能删里面的文件」，文件的 `w` 管「能不能改内容」——**删文件看目录**；
+4. 目录必须有 `x` 才能进得去、才能访问里面的文件；
+5. 常用档位：普通文件 `644`、私密文件 `600`、目录与可执行 `755`、私有目录 `700`；
+6. **`chmod -R 777` 是红线**；批量整目录用「目录 755 + 文件 644 + 单独补 `x`」三步走。
+
+---
 
 ### 3.8 文本三剑客（grep / sed / awk）与管道符
 
 > 这一节是 Linux 的生产力工具：**grep 找行、sed 改行、awk 拆列**。日志分析、进程排查、批量改配置全靠它们三个加一根管道。
 
 | 工具 | 定位 | 核心动作 | 最常用在 |
-|------|------|---------|---------|
+| --- | --- | --- | --- |
 | `grep` | 文本搜索工具，按用户指定的模式匹配并打印结果 | **筛选行** | 日志分析、查进程 / 端口 / 用户 |
 | `sed` | 字符流编辑器（stream editor） | 按行**过滤与取行**、批量替换 | 改配置、删注释、批量替换 |
 | `awk` | 格式化输出程序，命令行里的 Excel | 按列**拆分与统计** | 取列、求和、格式化对齐 |
@@ -762,7 +944,7 @@ drwxr-xr-x 5 monitor monitor  4096 9月  20 20:48 ..
 三个工具的模式匹配都建立在正则之上，但**默认方言不同**
 
 | 元字符 | 含义 | 基本正则 BRE | 扩展正则 ERE |
-|--------|------|-------------|-------------|
+| --- | --- | --- | --- |
 | `.` | 任意一个字符 | 直接写 | 直接写 |
 | `*` | 前一个字符重复 0 次或多次 | 直接写 | 直接写 |
 | `^` / `$` | 行首 / 行尾 | 直接写 | 直接写 |
@@ -779,7 +961,7 @@ drwxr-xr-x 5 monitor monitor  4096 9月  20 20:48 ..
 字符类（POSIX 写法比手写 `[a-z]` 更可靠，不受 locale 影响）：
 
 | 写法 | 含义 | 写法 | 含义 |
-|------|------|------|------|
+| --- | --- | --- | --- |
 | `[[:digit:]]` | 数字 | `[[:space:]]` | 空白（空格 / Tab / 换行） |
 | `[[:alpha:]]` | 字母 | `[[:upper:]]` `[[:lower:]]` | 大写 / 小写字母 |
 | `[[:alnum:]]` | 字母 + 数字 | `[[:punct:]]` | 标点符号 |
@@ -799,7 +981,7 @@ grep [选项] '模式' 文件
 ```
 
 | 选项 | 作用 | 选项 | 作用 |
-|------|------|------|------|
+| --- | --- | --- | --- |
 | `-i` | 忽略大小写 | `-c` | 只输出匹配的行数 |
 | `-v` | **反向匹配**，输出不匹配的行 | `-l` / `-L` | 只列文件名（含 / 不含） |
 | `-n` | 显示匹配行的行号 | `-w` | 全词匹配 |
@@ -868,7 +1050,7 @@ sed 的工作流程：
 - `-n` 关掉默认输出后，**只有被 `p` 命令选中的行才打印**——所以 `sed -n '/模式/p'` 的语义就是「只打印匹配行」。
 
 | 选项 | 作用 |
-|------|------|
+| --- | --- |
 | `-n` | 取消默认输出，通常与 `p` 搭配 |
 | `-e` | 指定多条命令（`-e 'cmd1' -e 'cmd2'`） |
 | `-i` | **直接修改原文件**（默认只输出到屏幕，不落盘） |
@@ -877,7 +1059,7 @@ sed 的工作流程：
 | `-f` | 从脚本文件里读取 sed 命令 |
 
 | 命令 | 作用 | 示例 |
-|------|------|------|
+| --- | --- | --- |
 | `p` | 打印 | `sed -n '1,5p' f` |
 | `d` | 删除（即不输出） | `sed '/^#/d' f` |
 | `s///` | 替换 | `sed 's/old/new/g' f` |
@@ -888,7 +1070,7 @@ sed 的工作流程：
 地址定界（决定命令作用在哪几行）：
 
 | 写法 | 含义 | 写法 | 含义 |
-|------|------|------|------|
+| --- | --- | --- | --- |
 | `3p` | 第 3 行 | `$p` | 最后一行 |
 | `3,7d` | 第 3~7 行 | `1,+3p` | 第 1 行及其后 3 行 |
 | `/正则/p` | 匹配正则的行 | `/开始/,/结束/d` | 从匹配「开始」到匹配「结束」的区间 |
@@ -933,7 +1115,7 @@ END{ }          ← 全部读完后执行一次（汇总、求平均）
 ```
 
 | 选项 | 作用 |
-|------|------|
+| --- | --- |
 | `-F` | **指定输入分隔符**（`-F:` 按冒号切、`-F'\t'` 按 Tab 切） |
 | `-v` | **定义或修改一个 awk 内部变量**（如 `-v OFS=,`） |
 | `-f` | 从脚本文件读取 awk 命令 |
@@ -941,7 +1123,7 @@ END{ }          ← 全部读完后执行一次（汇总、求平均）
 **输入分隔符 / 输出分隔符**：
 
 | 变量 | 含义 | 说明 |
-|------|------|------|
+| --- | --- | --- |
 | `FS` | 输入字段分隔符（Field Separator） | 与 `-F` 等价，`-F:` 就是 `FS=":"` |
 | `OFS` | 输出字段分隔符（Ouput Field Separator） | 决定 `print $1,$2` 里逗号输出成什么，默认空格 |
 
@@ -957,7 +1139,7 @@ awk 'BEGIN{FS=":";OFS="|"} {print $1,$3}' /etc/passwd   # 在 BEGIN 里设，效
 **awk 的内置变量**：
 
 | 变量 | 含义 | 变量 | 含义 |
-|------|------|------|------|
+| --- | --- | --- | --- |
 | `$0` | 整行内容 | `NF` | 当前行的**字段数**（`$NF` 即最后一个字段） |
 | `$1`…`$n` | 第 1…n 个字段 | `NR` | 已读入的总行号（多文件时累加） |
 | `FS` | 输入字段分隔符 | `FNR` | 当前文件内的行号（每个文件重新计数） |
@@ -990,7 +1172,7 @@ awk '{sum+=$5} END{print sum}' dir.txt                   # 不初始化也能用
 **常用模式**：
 
 | 写法 | 含义 | 写法 | 含义 |
-|------|------|------|------|
+| --- | --- | --- | --- |
 | `NR==2` | 第 2 行 | `/正则/` | 匹配正则的行 |
 | `NR==2,NR==5` | 第 2 到第 5 行 | `$3>100` | 第 3 列大于 100 |
 | `NR>1` | 跳过表头 | `$NF=="x"` | 最后一列等于 x |
@@ -1034,7 +1216,7 @@ ls -la | awk 'NR>1 && $5>1000 {print $NF, $5}'
 **格式化输出：print 与 printf**
 
 | 对比项 | `print` | `printf` |
-|--------|---------|----------|
+| --- | --- | --- |
 | 换行 | **自动**换行 | **不换行**，要手写 `\n` |
 | 多字段 | 用逗号分隔，输出时变成 `OFS` | 必须由格式串显式指定 |
 | 格式化能力 | 无 | 有（`%s` `%d` `%f` …） |
@@ -1049,7 +1231,7 @@ awk '{printf "%-30s %10s\n", $NF, $5}' dir.txt  # 文件名左对齐宽 30、大
 printf 的格式化输出方法（**类比 C 语言，很好理解**）：
 
 | 格式符 | 含义 | 示例输出 |
-|--------|------|---------|
+| --- | --- | --- |
 | `%s` | 字符串 | `cal.c` |
 | `%d` | 整数 | `169` |
 | `%f` | 浮点数 | `169.000000` |
@@ -1070,7 +1252,7 @@ printf 的格式化输出方法（**类比 C 语言，很好理解**）：
 和重定向的区别（这两个容易混，一起记）：
 
 | 符号 | 作用 | 数据流向 |
-|------|------|---------|
+| --- | --- | --- |
 | `>` / `>>` | 重定向到**文件** | 命令 → 文件（覆盖 / 追加） |
 | `<` | 从文件读入 | 文件 → 命令 |
 | `2>` | 重定向**错误输出** | 命令的 stderr → 文件 |
@@ -1124,267 +1306,10 @@ grep -v '^#' nginx.conf | sed 's/#.*//' | awk '{sum+=$2} END{print sum}'
 
 ---
 
-## 四、Vim 编辑器
-
-| 模式       | 进入方式                                              |
-| ---------- | ----------------------------------------------------- |
-| 插入模式   | 按 `i / I / o / O / a / A / R` 任意键进入，可自由输入 |
-| 命令行模式 | `Esc` 退出插入模式后输入命令（`:wq` 保存退出等）      |
-
----
-
-## 五、登录注销与关机重启
-
-```bash
-shutdown -h now          # 立即关机
-halt                     # 立即关机（同上）
-shutdown -h 1 "hello"    # 1 分钟后关机并广播提示
-shutdown -r now          # 立即重启
-```
-
----
-
-## 六、用户与用户组管理
-
-> root 用户可创建多用户并进行管理（用户目录在 `/home` 中）。
-
-### 6.1 用户操作
-
-| 命令 | 作用 | 示例 |
-|------|------|------|
-| `useradd username` | 添加用户（默认创建同名家目录与同名组） | `useradd king` |
-| `useradd -d 路径 username` | 指定家目录创建用户 | `useradd -d /home/test king` |
-| `passwd username` | 设置/修改密码（不写用户名默认改当前用户） | `passwd king` |
-| `userdel username` | 删除用户但保留家目录（一般推荐保留） | `userdel apple` |
-| `userdel -r username` | 删除用户并删除家目录 | `userdel -r orange` |
-| `id username` | 查询用户是否存在及其信息 | `id king` |
-| `su - username` | 切换用户 | `su - root` |
-| `whoami` / `who am i` | 查询当前登录系统的用户信息 | — |
-
-> 权限不足时通过 `su -` 切换到高权限用户。**高权限切换低权限不需要输入密码，低权限切换高权限需要输入密码。**
-
-### 6.2 用户组
-
-> 类似角色，对具有共性/相同权限的用户进行统一管理。
-
-| 命令 | 作用 | 示例 |
-|------|------|------|
-| `groupadd groupname` | 添加用户组 | `groupadd meme` |
-| `groupdel groupname` | 删除用户组 | `groupdel meme` |
-| `useradd -g groupname username` | 添加用户到指定组 | `useradd -g huanglong jinxi` |
-| `usermod -g usergroup username` | 更改用户所属组 | — |
-
-> 未指定组时，`useradd` 会默认创建与用户同名的组。
-
----
-
-## 七、权限管理（chmod / chown）
-
-> `chmod` = **ch**ange **mod**e，修改文件或目录的权限。只有**文件属主**或 **root** 能改，普通用户**不能靠它提权**。
-> `chown` / `chgrp` 负责改**属主、属组**。「权限位 + 属主 + 属组」三样合起来，才回答得了「谁能对这个文件做什么」。
-
-### 7.1 权限怎么读：九个字符 + 三类身份
-
-`ls -l` 第一列（如 `-rwxr-xr-x`）去掉开头的类型位，剩下 **9 个字符、每 3 个一组**：
-
-| 分组 | 身份 | 简写 | 说明 |
-|------|------|------|------|
-| 第 1 组 | 属主 | `u`（user） | 文件的拥有者 |
-| 第 2 组 | 属组 | `g`（group） | 文件所属组的成员 |
-| 第 3 组 | 其他人 | `o`（other） | 既不是属主、也不在属组里的用户 |
-| — | 所有人 | `a`（all） | `u`+`g`+`o` 的简写，只在改权限时用 |
-
-```text
-dr-xr-xr-x. 2 root root 6 Nov  3  2024 
- 				└┬┘└┬┘
- 				 │  │  
-				 │  └── 属组
- 				 └───── 属主
--rwxr-xr-x
- └┬┘└┬┘└┬┘
-  │  │  └── o：其他人 → r-x
-  │  └───── g：属组   → r-x
-  └──────── u：属主   → rwx
-```
-
-### 7.2 同一个权限位，落在文件上和目录上不是一回事
-
-这是最容易被含糊过去的一点：
-
-| 权限 | 对**文件** | 对**目录** |
-|------|-----------|-----------|
-| `r` | 可以读取内容（`cat`） | 可以列出里面有哪些文件（`ls`） |
-| `w` | 可以修改内容 | 可以**创建 / 删除 / 重命名**里面的文件 |
-| `x` | 可以作为程序执行（`./a.sh`） | 可以进入该目录（`cd`）、访问里面的文件 |
-
-> **只给目录 `w` 不给 `x` 是无效的**：能建文件却进不去、也删不掉。目录至少要 `r-x`（即 5）才可用。
-> 反过来，**能不能删掉一个文件，看的是它所在目录的 `w`，而不是文件自己的 `w`**——这一点与 Windows 的直觉相反。所以防误删的有效手段是把目录设成 `555`，而不是给文件去掉写权限。
-
-### 7.3 数字模式
-
-`r=4`、`w=2`、`x=1`，三位相加得到一个数字，三个数字依次对应 u / g / o：
-
-```text
-7 = rwx      6 = rw-      5 = r-x      4 = r--
-3 = -wx      2 = -w-      1 = --x      0 = ---
-```
-
-`chmod 755 dir` 就是：属主 `rwx`、属组 `r-x`、其他人 `r-x`。
-
-| 命令 | 等价权限 | 典型用途 |
-|------|---------|---------|
-| `chmod 644 file` | `rw-r--r--` | 普通文件（网页、配置、源码），**最常用** |
-| `chmod 600 file` | `rw-------` | 私密文件，如 `id_rsa` 私钥 |
-| `chmod 755 dir` | `rwxr-xr-x` | 目录、可执行程序 |
-| `chmod 700 dir` | `rwx------` | 私有目录（家目录默认就是这个） |
-| `chmod 777 file` | `rwxrwxrwx` | ⚠️ 所有人全权限，危险，别用 |
-
-### 7.4 符号模式
-
-格式：
-
-```bash
-chmod [ugoa][+-=][rwxXst] 文件
-```
-
-| 部分 | 取值 | 含义 |
-|------|------|------|
-| 身份 | `u` / `g` / `o` / `a` | 不写默认 `a`（所有人） |
-| 操作 | `+` 加 / `-` 减 / `=` 设为 | `=` 会把没列出的权限一并清掉 |
-| 权限 | `r` `w` `x` | 此外还有 `X` `s` `t`，见下 |
-
-```bash
-chmod +x script.sh          # 给所有人加执行权限（脚本变可执行）
-chmod u+x script.sh         # 只给属主加执行
-chmod go-w file             # 去掉属组和其他人的写权限
-chmod a+r file              # 所有人可读
-chmod u=rwx,g=rx,o= file    # 等价于 chmod 750
-chmod -R u+rwX,go+rX dir    # 递归设置目录树的常用组合
-```
-
-> 大写 **`X`** 是小写 `x` 的「条件版本」：**只有目录、或原本就带执行权限的文件**才会被加上 `x`。递归处理目录树时必须用它——否则一条 `-R a+x` 会把 `.c`、`.h`、`.txt` 全变成「可执行文件」，既难看又给源码平白加了执行位。
-
-### 7.5 特殊权限：setuid / setgid / sticky
-
-四位数字模式的第一位就是特殊权限位：
-
-| 数字 | 名称 | 符号写法 | 作用 | 在 `ls -l` 里长这样 |
-|------|------|---------|------|-------------------|
-| 4 | **setuid**（SUID） | `chmod u+s file` | 执行时**以文件属主的身份**运行，而不是调用者身份 | `-rwsr-xr-x` |
-| 2 | **setgid**（SGID） | `chmod g+s dir` | 目录下新建的文件**继承该目录的属组** | `drwxr-sr-x` |
-| 1 | **sticky** | `chmod +t dir` | 目录里只有**文件属主、目录属主或 root** 能删除文件 | `drwxrwxrwt` |
-
-```bash
-chmod 4755 file    # setuid
-chmod 2755 dir     # setgid：目录里新建文件自动归属该组，团队共享目录常这么配
-chmod 1777 /tmp    # sticky：人人可写、但只能删自己的文件
-```
-
-> **`/tmp` 的 `1777` 就是 sticky 的经典应用**——所以谁都能在 `/tmp` 里建文件，却删不掉别人的。
-> `setuid` 是把双刃剑：`passwd` 让普通用户也能改密码（它要写 `/etc/shadow`），靠的正是 setuid。但别自己随手给程序加 setuid，一旦程序有输入漏洞，攻击者就能借它拿 root。
-
-### 7.6 改属主与属组：chown / chgrp
-
-权限位和属主是两件独立的事：**属主不对，`chmod` 给再多权限也没用**。
-
-| 命令 | 作用 | 示例 |
-|------|------|------|
-| `chown 用户 文件` | 改属主 | `chown monitor /home/monitor/makefile` |
-| `chgrp 组 文件` | 改属组 | `chgrp monitor /home/monitor/makefile` |
-| `chown 用户:组 文件` | 同时改属主与属组 | `chown monitor:monitor file` |
-| `chown -R 用户:组 目录` | 递归改整个目录树 | `chown -R monitor:monitor .` |
-| `stat -c '%U %G' 文件` | 只看属主与属组 | `stat -c '%U %G' makefile` |
-
-```text
-# 改之前
-$ stat -c '%U %G' makefile
-root root
-
-$ chown monitor /home/monitor/makefile
-$ chgrp monitor /home/monitor/makefile
-
-# 改之后
-$ stat -c '%U %G' makefile
-monitor monitor
-```
-
-> **只有 root 能把文件「送」给别人。** 普通用户不能 `chown` 给他人（哪怕是想把自己的文件交出去也不行，这是防止绕开配额与审计的机制），所以 `chown` 实际都由 root / sudo 执行。
-
-### 7.7 实战：把 root 建的目录交还给普通用户
-
-典型场景：用 root 编译或拷贝了一堆文件到某个用户的目录下，属主全是 `root`，用户自己改不了也删不掉。
-
-```text
-$ ls -l /home/monitor/makefile
--rw-r--r-- 1 root root   169 Sep 17 14:37 cal.c
--rw-r--r-- 1 root root   432 Sep 17 14:37 in.c
--rw-r--r-- 1 root root    93 Sep 17 14:30 makefile
--rw-r--r-- 1 root root   264 Sep 17 14:37 out.c
--rwxr-xr-x 1 root root 26112 Sep 17 14:38 stuscore      ← 可执行文件
--rw-r--r-- 1 root root   274 Sep 17 14:37 stuscore.c
--rw-r--r-- 1 root root   187 Sep 17 14:37 stuscore.h
-```
-
-处理顺序是「**先改属主 → 再按目录/文件分别设权限 → 最后单独补可执行位**」：
-
-```bash
-# ① 递归改属主属组（这是根因；权限位再对，属主不对也没用）
-chown -R monitor:monitor .
-
-# ② 目录统一 755、文件统一 644（用 find 区分类型，而不是一把 -R 755）
-find . -type d -exec chmod 755 {} +
-find . -type f -exec chmod 644 {} +
-
-# ③ 只给需要执行的那个文件补执行位
-chmod 755 stuscore
-
-# ④ 核对
-ls -la
-```
-
-```text
--rw-r--r-- 1 monitor monitor   169 Sep 17 14:37 cal.c
--rw-r--r-- 1 monitor monitor   432 Sep 17 14:37 in.c
--rw-r--r-- 1 monitor monitor    93 Sep 17 14:30 makefile
--rw-r--r-- 1 monitor monitor   264 Sep 17 14:37 out.c
--rwxr-xr-x 1 monitor monitor 26112 Sep 17 14:38 stuscore     ← 执行位保留
--rw-r--r-- 1 monitor monitor   274 Sep 17 14:37 stuscore.c
--rw-r--r-- 1 monitor monitor   187 Sep 17 14:37 stuscore.h
-```
-
-> **为什么不直接 `chmod -R 755 .`**：那样 `.c`、`.h`、`makefile` 全带上执行位，`ls` 输出一片高亮，看着就乱，给源码加执行位也毫无意义。「**目录 755 + 文件 644 + 需要执行的单独设**」这套三步法适用于绝大多数目录树。
-> `find ... -exec chmod ... {} +` 结尾的 `{} +` 表示**把所有匹配到的路径一次性传给同一个 chmod 进程**；换成 `{} \;` 则是每个文件起一个进程，文件多了会慢一个量级。
-
-### 7.8 避坑清单
-
-| 坑 | 说明 |
-|----|------|
-| `chmod -R 777 /` | ⚠️ **绝对不能执行**。整个系统权限全开、安全归零，且没有一次性回滚的办法。 |
-| 报 `Operation not permitted` | 你不是文件属主、也不是 root。**`chmod` 不能提权**，只能由管理员用 `sudo` / `chown` / `setfacl` 处理。 |
-| 改了权限还是不能写 | 先看属主对不对（`ls -l` 第三列）；属主不对就先 `chown`。 |
-| 给目录加了 `w` 仍进不去 | 目录缺 `x`，补上（`chmod u+rwx dir`）。 |
-| `cp` 过来属主变了 | `cp` 默认把属主设成**当前操作用户**；要保留权限与时间戳加 `-p`，属主本身仍需 root 才能改。 |
-| 图省事用 `-R 777` | 反面教材。该改的是属主与属组，不是把门全打开。 |
-
-### 7.9 小结
-
-> 权限 = 「属主 / 属组 / 其他人」各 3 位；读 `r`(4)、写 `w`(2)、执行 `x`(1)；落到目录上分别意味着「能列出文件」「能增删文件」「能进去」。**属主不对先 `chown`，权限不对再 `chmod`。**
-
-**六条核心**：
-
-1. `chmod` 改权限位，`chown` / `chgrp` 改属主属组，**属主是前提**；
-2. 三位一组依次对应 u / g / o，`a` 是三者之和；
-3. 目录的 `w` 管「能不能删里面的文件」，文件的 `w` 管「能不能改内容」——**删文件看目录**；
-4. 目录必须有 `x` 才能进得去、才能访问里面的文件；
-5. 常用档位：普通文件 `644`、私密文件 `600`、目录与可执行 `755`、私有目录 `700`；
-6. **`chmod -R 777` 是红线**；批量整目录用「目录 755 + 文件 644 + 单独补 `x`」三步走。
-
----
-
 ## 八、运行级别
 
 | 级别 | 说明 |
-|------|------|
+| --- | --- |
 | 0 | 关机 |
 | 1 | 单用户（找回丢失密码） |
 | 2 | 多用户无网络服务 |
@@ -1425,7 +1350,7 @@ help cd       # 获得 shell 内置命令的帮助信息
 ### 10.1 为什么会停：三条独立的"kill 路径"
 
 | # | 触发机制 | 原理 | 影响范围 | 是否常见 |
-|---|---------|------|---------|---------|
+| --- | --- | --- | --- | --- |
 | ① | **SIGHUP（终端挂断信号）** | SSH 断开 / 终端窗口关闭 → 内核认为控制终端"挂断"，向前台进程组发送 `SIGHUP`。进程默认动作是终止 | 当前终端的前台进程组 | 最常见 |
 | ② | **shell 作业清理** | `bash`/`zsh` 退出时清理作业表；若开启 `huponexit`（`shopt -s huponexit`），会向**所有**作业发 `SIGHUP` | 该 shell 的所有后台作业 | 常见 |
 | ③ | **systemd-logind 会话回收** | 最后一个会话结束时，logind 销毁 `session-N.scope` / `user@UID.service`；`KillUserProcesses=yes` 或 `RemoveIPC=yes` 会连带清掉残留进程 | 该用户**所有**进程（含后台） | 图形会话/部分发行版 |
@@ -1447,7 +1372,7 @@ ps -o pid,ppid,pgid,sid,tty,stat,cmd -p <PID>
 判定标准：
 
 | 字段 | 期望值 | 说明 |
-|------|--------|------|
+| --- | --- | --- |
 | `TTY` | `?` | 无控制终端 → 已脱离 |
 | `SID` | ≠ 登录 shell 的 SID | 独立会话 |
 | `PPID` | `1`（或 systemd） | 被 init 收养，父 shell 已消失 |
@@ -1478,7 +1403,7 @@ setsid wget -c "URL" &
 ```
 
 | 命令 | 作用 | 局限 |
-|------|------|------|
+| --- | --- | --- |
 | `nohup` | 忽略 `SIGHUP`，stdout 自动重定向到 `nohup.out` | 不脱离终端；不防 logind 清理 |
 | `setsid` | 新建 session，彻底脱离控制终端 | 不忽略其它信号（如 `SIGTERM`） |
 | `disown` | 从 shell 作业表移除，shell 不再管它 | 只对**已启动**的作业有效；不防 ③ |
@@ -1581,7 +1506,7 @@ curl -I "URL" | grep -i accept-ranges    # 必须返回 bytes
 ```
 
 | 工具 | 续传命令 | 备注 |
-|------|---------|------|
+| --- | --- | --- |
 | wget | `wget -c -t 0 --timeout=30 URL` | `-t 0` 无限重试；`-b` 后台 + `-o log` |
 | curl | `curl -C - -O --retry 10 --retry-delay 5 URL` | `-C -` 自动续传 |
 | aria2c | `aria2c -c -x 16 -s 16 -d /data URL` | 多线程，大文件首选；`-D` 守护化 |
@@ -1599,7 +1524,7 @@ ls -l --time-style=full-iso big.iso   # 观察大小是否仍在增长
 ### 10.4 方案选择速查
 
 | 场景 | 推荐做法 | 抗 ①②③ |
-|------|---------|--------|
+| --- | --- | --- |
 | 临时小文件，马上就完 | `nohup wget -c URL &` | ①② |
 | 大文件 / 长时间下载 | `tmux` + `aria2c -c` | ①②（配 linger 可抗 ③） |
 | 无人值守、断线要自愈 | systemd service + `Restart=on-failure` + `enable-linger` | ①②③ |
@@ -1624,7 +1549,7 @@ ls -l --time-style=full-iso big.iso   # 观察大小是否仍在增长
        TCPKeepAlive yes
    ```
 
-### 10.6 一句话结论
+### 10.6 结论
 
 > 退出登录后下载停止，**根因是进程仍绑定在登录会话上**（收 `SIGHUP`）或**被 logind 随会话回收**。
 > 对策就三层：**`setsid`/`nohup` 脱钩 → `tmux` 保活 → `systemd + linger` 托管**；

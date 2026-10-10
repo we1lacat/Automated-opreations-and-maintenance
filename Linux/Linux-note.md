@@ -267,15 +267,6 @@ futa  lover.txt
 
 ---
 
-## 四、Vim 编辑器
-
-| 模式       | 进入方式                                              |
-| --- | --- |
-| 插入模式   | 按 `i / I / o / O / a / A / R` 任意键进入，可自由输入 |
-| 命令行模式 | `Esc` 退出插入模式后输入命令（`:wq` 保存退出等）      |
-
----
-
 ### 3.5 文件查看
 
 #### cat / more / less
@@ -576,332 +567,6 @@ DirectMap1G:     3145728 kB
 node2
 
 ```
-
-#### passwd 用户信息文件
-
-```bash
-[root@beta ~]# cat /etc/passwd
-root:x:0:0:root:/root:/bin/bash
-bin:x:1:1:bin:/bin:/sbin/nologin
-.
-.
-.
-king:x:1000:1000::/home/king:/bin/bash
-#用户名：密码占位符：uid:基本组id:用户描述信息：家目录：解释器程序
-# 0		 		超级用户
-# 1-999	 		系统伪用户
-# 1000-65635	普通用户
-echo password |passwd --stdin #脚本用的多些
-```
-
-关于解释器补充一些，其他见shell
-
-```bash
-[root@beta ~]# /bin/sh
-sh-5.1# ls
-ae.txt  anaconda-ks.cfg
-sh-5.1# cd
-sh-5.1# /bin/bash
-#bash是大部分情况使用的，但可以指定解释器
-```
-
-#### useradd 创建用户默认信息
-
-```bash
-[root@beta home]# cat /etc/default/useradd
-# useradd defaults file
-GROUP=100
-HOME=/home
-INACTIVE=-1
-EXPIRE=
-SHELL=/bin/bash
-SKEL=/etc/skel
-CREATE_MAIL_SPOOL=yes
-
-```
-
-#### shadow 用户密码文件
-
-```bash
-[root@beta mail]# cat  /etc/shadow
-root:$6$/J6CF7p6ijGJPYny$aJM0oswfnj4KCFc.vr7521eGTiQyAQ4ta0OpFZZ0HgN5TgcdxZXCdIdtpouascX4Ls78piuMojfm/1QZ0UCh6.::0:99999:7:::
-
-...
-
-king:$6$rounds=100000$P1vUGPZeEWKRxeUV$CI.oL0Oe9J7odMM6MZoRuxDj5wAp3wYDT5PTtLuz5AWFxXeoDPXgJXTrbXZRdp3uLm2eh3DZ/u..Cr5taalof/:20733:0:99999:7:::
-account:$6$rounds=100000$y7jwUhEDgYGfMTHZ$KYFmr6Qd6i9YFPl2dGU6fMZOoTcN0cqkVKEkFfFeuTydMH/7P3U2p//0cmtoz6TZtN6yuz6U8eUVSBjW7wWWV0:20735:0:99999:7:::
-#相关字段了解即可
-change -d 0 usename #可以让用户登录后强制更改密码
-```
-
----
-
-## 五、登录注销与关机重启
-
-```bash
-shutdown -h now          # 立即关机
-halt                     # 立即关机（同上）
-shutdown -h 1 "hello"    # 1 分钟后关机并广播提示
-shutdown -r now          # 立即重启
-```
-
----
-
-## 六、用户与用户组管理
-
-> root 用户可创建多用户并进行管理（用户目录在 `/home` 中）。
-
-### 6.1 用户操作
-
-`useradd   username`  添加用户（默认创建同名家目录与同名组）
-
-```text
-u 指定uid
--g meme 指定组
--G king  附加组
--c 'test account' 指定信息
-```
-
-`passwd username `设置/修改密码（不写用户名默认改当前用户）
-
-```bash
-[root@beta mail]# passwd account
-Changing password for user account.
-New password:
-Retype new password:
-passwd: all authentication tokens updated successfully.
-#注意密码规范且能记住即可，但是忘记不能查询
-```
-
-其他的操作
-
-```bash
-userdel username	#删除用户但保留家目录（一般推荐保留）
-
-userdel -r username #删除用户并删除家目录
-
-id username #查询用户 是否存在及其信息
-
-su - username #切换用户，高级切低级是不需要密码de
-
-whoami / who am i #查询当前登录系统的用户信息
-```
-
-### 6.2 用户组
-
-> 类似角色，对具有共性/相同权限的用户进行统一管理。
-
-| 命令                            | 作用             | 示例                         |
-| --- | --- | --- |
-| `groupadd groupname`            | 添加用户组       | `groupadd meme`              |
-| `groupdel groupname`            | 删除用户组       | `groupdel meme`              |
-| `useradd -g groupname username` | 添加用户到指定组 | `useradd -g huanglong jinxi` |
-| `usermod -g usergroup username` | 更改用户所属组   | —                            |
-
-> 未指定组时，`useradd` 会默认创建与用户同名的组。
-
----
-
-## 七、权限管理（chmod / chown）
-
-> `chmod` = **ch**ange **mod**e，修改文件或目录的权限。只有**文件属主**或 **root** 能改，普通用户**不能靠它提权**。
-> `chown` / `chgrp` 负责改**属主、属组**。「权限位 + 属主 + 属组」三样合起来，才回答得了「谁能对这个文件做什么」。
-
-### 7.1 权限怎么读：九个字符 + 三类身份
-
-`ls -l` 第一列（如 `-rwxr-xr-x`）去掉开头的类型位，剩下 **9 个字符、每 3 个一组**：
-
-| 分组    | 身份   | 简写         | 说明                               |
-| --- | --- | --- | --- |
-| 第 1 组 | 属主   | `u`（user）  | 文件的拥有者                       |
-| 第 2 组 | 属组   | `g`（group） | 文件所属组的成员                   |
-| 第 3 组 | 其他人 | `o`（other） | 既不是属主、也不在属组里的用户     |
-| —       | 所有人 | `a`（all）   | `u`+`g`+`o` 的简写，只在改权限时用 |
-
-```text
-dr-xr-xr-x. 2 root root 6 Nov  3  2024
- 				└┬┘└┬┘
- 				 │  │
-				 │  └── 属组
- 				 └───── 属主
--rwxr-xr-x
- └┬┘└┬┘└┬┘
-  │  │  └── o：其他人 → r-x
-  │  └───── g：属组   → r-x
-  └──────── u：属主   → rwx
-```
-
-### 7.2 同一个权限位，在文件上和目录的差异
-
-这是最容易被含糊过去的一点：
-
-| 权限 | 对**文件**                   | 对**目录**                             |
-| --- | --- | --- |
-| `r`  | 可以读取内容（`cat`）        | 可以列出里面有哪些文件（`ls`）         |
-| `w`  | 可以修改内容                 | 可以**创建 / 删除 / 重命名**里面的文件 |
-| `x`  | 可以作为程序执行（`./a.sh`） | 可以进入该目录（`cd`）、访问里面的文件 |
-
-> **只给目录 `w` 不给 `x` 是无效的**：能建文件却进不去、也删不掉。目录至少要 `r-x`（即 5）才可用。
-> 反过来，**能不能删掉一个文件，看的是它所在目录的 `w`，而不是文件自己的 `w`**——这一点与 Windows 的直觉相反。所以防误删的有效手段是把目录设成 `555`，而不是给文件去掉写权限。
-
-### 7.3 数字模式
-
-`r=4`、`w=2`、`x=1`，三位相加得到一个数字，三个数字依次对应 u / g / o：
-
-```text
-7 = rwx      6 = rw-      5 = r-x      4 = r--
-3 = -wx      2 = -w-      1 = --x      0 = ---
-```
-
-`chmod 755 dir` 就是：属主 `rwx`、属组 `r-x`、其他人 `r-x`。
-
-| 命令             | 等价权限    | 典型用途                                 |
-| --- | --- | --- |
-| `chmod 644 file` | `rw-r--r--` | 普通文件（网页、配置、源码），**最常用** |
-| `chmod 600 file` | `rw-------` | 私密文件，如 `id_rsa` 私钥               |
-| `chmod 755 dir`  | `rwxr-xr-x` | 目录、可执行程序                         |
-| `chmod 700 dir`  | `rwx------` | 私有目录（家目录默认就是这个）           |
-| `chmod 777 file` | `rwxrwxrwx` | ⚠️ 所有人全权限，危险，别用               |
-
-### 7.4 符号模式
-
-格式：
-
-```bash
-chmod [ugoa][+-=][rwxXst] 文件
-```
-
-| 部分 | 取值                       | 含义                         |
-| --- | --- | --- |
-| 身份 | `u` / `g` / `o` / `a`      | 不写默认 `a`（所有人）       |
-| 操作 | `+` 加 / `-` 减 / `=` 设为 | `=` 会把没列出的权限一并清掉 |
-| 权限 | `r` `w` `x`                | 此外还有 `X` `s` `t`，见下   |
-
-```bash
-chmod +x script.sh          # 给所有人加执行权限（脚本变可执行）
-chmod u+x script.sh         # 只给属主加执行
-chmod go-w file             # 去掉属组和其他人的写权限
-chmod a+r file              # 所有人可读
-chmod u=rwx,g=rx,o= file    # 等价于 chmod 750
-chmod -R u+rwX,go+rX dir    # 递归设置目录树的常用组合
-```
-
-> 大写 **`X`** 是小写 `x` 的「条件版本」：**只有目录、或原本就带执行权限的文件**才会被加上 `x`。递归处理目录树时必须用它——否则一条 `-R a+x` 会把 `.c`、`.h`、`.txt` 全变成「可执行文件」，既难看又给源码平白加了执行位。
-
-### 7.5 特殊权限：setuid / setgid / sticky
-
-四位数字模式的第一位就是特殊权限位：
-
-| 数字 | 名称               | 符号写法         | 作用                                               | 在 `ls -l` 里长这样 |
-| --- | --- | --- | --- | --- |
-| 4    | **setuid**（SUID） | `chmod u+s file` | 执行时**以文件属主的身份**运行，而不是调用者身份   | `-rwsr-xr-x`        |
-| 2    | **setgid**（SGID） | `chmod g+s dir`  | 目录下新建的文件**继承该目录的属组**               | `drwxr-sr-x`        |
-| 1    | **sticky**         | `chmod +t dir`   | 目录里只有**文件属主、目录属主或 root** 能删除文件 | `drwxrwxrwt`        |
-
-```bash
-chmod 4755 file    # setuid
-chmod 2755 dir     # setgid：目录里新建文件自动归属该组，团队共享目录常这么配
-chmod 1777 /tmp    # sticky：人人可写、但只能删自己的文件
-```
-
-> **`/tmp` 的 `1777` 就是 sticky 的经典应用**——所以谁都能在 `/tmp` 里建文件，却删不掉别人的。
-> `setuid` 是把双刃剑：`passwd` 让普通用户也能改密码（它要写 `/etc/shadow`），靠的正是 setuid。但别自己随手给程序加 setuid，一旦程序有输入漏洞，攻击者就能借它拿 root。
-
-### 7.6 改属主与属组：chown / chgrp
-
-权限位和属主是两件独立的事：**属主不对，`chmod` 给再多权限也没用**。
-
-| 命令                    | 作用             | 示例                                   |
-| --- | --- | --- |
-| `chown 用户 文件`       | 改属主           | `chown monitor /home/monitor/makefile` |
-| `chgrp 组 文件`         | 改属组           | `chgrp monitor /home/monitor/makefile` |
-| `chown 用户:组 文件`    | 同时改属主与属组 | `chown monitor:monitor file`           |
-| `chown -R 用户:组 目录` | 递归改整个目录树 | `chown -R monitor:monitor .`           |
-| `stat -c '%U %G' 文件`  | 只看属主与属组   | `stat -c '%U %G' makefile`             |
-
-```text
-# 改之前
-$ stat -c '%U %G' makefile
-root root
-
-$ chown monitor /home/monitor/makefile
-$ chgrp monitor /home/monitor/makefile
-
-# 改之后
-$ stat -c '%U %G' makefile
-monitor monitor
-```
-
-> **只有 root 能把文件「送」给别人。** 普通用户不能 `chown` 给他人（哪怕是想把自己的文件交出去也不行，这是防止绕开配额与审计的机制），所以 `chown` 实际都由 root / sudo 执行。
-
-### 7.7 实战：把 root 建的目录交还给普通用户
-
-典型场景：用 root 编译或拷贝了一堆文件到某个用户的目录下，属主全是 `root`，用户自己改不了也删不掉。
-
-```text
-$ ls -l /home/monitor/makefile
--rw-r--r-- 1 root root   169 Sep 17 14:37 cal.c
--rw-r--r-- 1 root root   432 Sep 17 14:37 in.c
--rw-r--r-- 1 root root    93 Sep 17 14:30 makefile
--rw-r--r-- 1 root root   264 Sep 17 14:37 out.c
--rwxr-xr-x 1 root root 26112 Sep 17 14:38 stuscore      ← 可执行文件
--rw-r--r-- 1 root root   274 Sep 17 14:37 stuscore.c
--rw-r--r-- 1 root root   187 Sep 17 14:37 stuscore.h
-```
-
-处理顺序是「**先改属主 → 再按目录/文件分别设权限 → 最后单独补可执行位**」：
-
-```bash
-# ① 递归改属主属组（这是根因；权限位再对，属主不对也没用）
-chown -R monitor:monitor .
-
-# ② 目录统一 755、文件统一 644（用 find 区分类型，而不是一把 -R 755）
-find . -type d -exec chmod 755 {} +
-find . -type f -exec chmod 644 {} +
-
-# ③ 只给需要执行的那个文件补执行位
-chmod 755 stuscore
-
-# ④ 核对
-ls -la
-```
-
-```text
--rw-r--r-- 1 monitor monitor   169 Sep 17 14:37 cal.c
--rw-r--r-- 1 monitor monitor   432 Sep 17 14:37 in.c
--rw-r--r-- 1 monitor monitor    93 Sep 17 14:30 makefile
--rw-r--r-- 1 monitor monitor   264 Sep 17 14:37 out.c
--rwxr-xr-x 1 monitor monitor 26112 Sep 17 14:38 stuscore     ← 执行位保留
--rw-r--r-- 1 monitor monitor   274 Sep 17 14:37 stuscore.c
--rw-r--r-- 1 monitor monitor   187 Sep 17 14:37 stuscore.h
-```
-
-> **为什么不直接 `chmod -R 755 .`**：那样 `.c`、`.h`、`makefile` 全带上执行位，`ls` 输出一片高亮，看着就乱，给源码加执行位也毫无意义。「**目录 755 + 文件 644 + 需要执行的单独设**」这套三步法适用于绝大多数目录树。
-> `find ... -exec chmod ... {} +` 结尾的 `{} +` 表示**把所有匹配到的路径一次性传给同一个 chmod 进程**；换成 `{} \;` 则是每个文件起一个进程，文件多了会慢一个量级。
-
-### 7.8 避坑清单
-
-| 坑                           | 说明                                                         |
-| --- | --- |
-| `chmod -R 777 /`             | ⚠️ **绝对不能执行**。整个系统权限全开、安全归零，且没有一次性回滚的办法。 |
-| 报 `Operation not permitted` | 你不是文件属主、也不是 root。**`chmod` 不能提权**，只能由管理员用 `sudo` / `chown` / `setfacl` 处理。 |
-| 改了权限还是不能写           | 先看属主对不对（`ls -l` 第三列）；属主不对就先 `chown`。     |
-| 给目录加了 `w` 仍进不去      | 目录缺 `x`，补上（`chmod u+rwx dir`）。                      |
-| `cp` 过来属主变了            | `cp` 默认把属主设成**当前操作用户**；要保留权限与时间戳加 `-p`，属主本身仍需 root 才能改。 |
-| 图省事用 `-R 777`            | 反面教材。该改的是属主与属组，不是把门全打开。               |
-
-### 7.9 小结
-
-> 权限 = 「属主 / 属组 / 其他人」各 3 位；读 `r`(4)、写 `w`(2)、执行 `x`(1)；落到目录上分别意味着「能列出文件」「能增删文件」「能进去」。**属主不对先 `chown`，权限不对再 `chmod`。**
-
-**六条核心**：
-
-1. `chmod` 改权限位，`chown` / `chgrp` 改属主属组，**属主是前提**；
-2. 三位一组依次对应 u / g / o，`a` 是三者之和；
-3. 目录的 `w` 管「能不能删里面的文件」，文件的 `w` 管「能不能改内容」——**删文件看目录**；
-4. 目录必须有 `x` 才能进得去、才能访问里面的文件；
-5. 常用档位：普通文件 `644`、私密文件 `600`、目录与可执行 `755`、私有目录 `700`；
-6. **`chmod -R 777` 是红线**；批量整目录用「目录 755 + 文件 644 + 单独补 `x`」三步走。
 
 ---
 
@@ -1306,7 +971,636 @@ grep -v '^#' nginx.conf | sed 's/#.*//' | awk '{sum+=$2} END{print sum}'
 
 ---
 
-## 八、运行级别
+### 3.9 文件查找 find
+
+> `find` 是「目录大调查」：按条件在目录树里递归找文件。条件写全，再配 `-exec` 就能直接对结果干活。
+
+| 选项 | 作用 |
+| --- | --- |
+| `-type` | 指定类型：`f` 文件、`d` 目录、`l` 链接 |
+| `-name` | 按名匹配（**务必加引号**，否则 `*` 会被当前 shell 提前展开） |
+| `-iname` | 同上，忽略大小写 |
+| `-size` | 按大小，`+` 大于、`-` 小于（如 `+1k`、`-100M`） |
+| `-user` | 按属主查找 |
+| `-mtime` | 按修改时间：`+n` n 天之前、`-n` n 天之内、`0` 表示 24 小时内 |
+| `-a` / `-o` | 条件组合：and / or |
+
+```bash
+[root@beta home]# find king/sharefile/ -name '*.log'
+king/sharefile/app/springboot-app.log
+king/sharefile/nginx/access.log
+king/sharefile/nginx/error.log
+[root@beta home]# find king/sharefile/ -name '*log*'
+king/sharefile/log
+king/sharefile/app/springboot-app.log
+king/sharefile/data/login-audit.jsonl
+king/sharefile/nginx/access.log
+king/sharefile/nginx/error.log
+king/sharefile/scripts/gen_logs.py
+king/sharefile/syslog
+```
+
+#### 3.9.1 -exec：对找到的文件执行命令
+
+```bash
+find king/sharefile/ -name '*log*' -size +1k -exec ls -lh {} +
+```
+
+| 写法 | 含义 |
+| --- | --- |
+| `{}` | 占位符，代表 find 找到的文件名 |
+| `\;` | 每找到**一个**文件就执行一次命令 |
+| `+` | 把多个文件**一次性**传给命令（效率更高，优先用） |
+
+> `*log*` 必须加引号，避免被当前 shell 提前展开。
+> `ll` 是别名，`find -exec` 认不出来，要写 `ls -l` / `ls -lh`。
+
+
+## 四、Vim 编辑器
+
+| 模式       | 进入方式                                              |
+| --- | --- |
+| 插入模式   | 按 `i / I / o / O / a / A / R` 任意键进入，可自由输入 |
+| 命令行模式 | `Esc` 退出插入模式后输入命令（`:wq` 保存退出等）      |
+
+---
+
+## 五、登录注销与关机重启
+
+```bash
+shutdown -h now          # 立即关机
+halt                     # 立即关机（同上）
+shutdown -h 1 "hello"    # 1 分钟后关机并广播提示
+shutdown -r now          # 立即重启
+```
+
+---
+
+## 六、用户与用户组管理
+
+> root 用户可创建多用户并进行管理（用户目录在 `/home` 中）。
+
+### 6.1 用户数据文件：/etc/passwd、/etc/shadow、/etc/default/useradd
+
+#### /etc/passwd：用户信息文件
+
+```bash
+[root@beta ~]# cat /etc/passwd
+root:x:0:0:root:/root:/bin/bash
+bin:x:1:1:bin:/bin:/sbin/nologin
+.
+.
+.
+king:x:1000:1000::/home/king:/bin/bash
+# 用户名:密码占位符:uid:基本组id:用户描述信息:家目录:解释器程序
+# 0            超级用户
+# 1-999        系统伪用户
+# 1000-65535   普通用户
+echo password | passwd --stdin    # 脚本里批量设密码常用
+```
+
+> uid 才是系统认人的依据，用户名只是给人看的：`ls -l` 显示属主名是按 uid 反查 `/etc/passwd` 得到的，uid 查不到就直接显示数字。
+
+关于解释器补充一些，其他见 shell
+
+```bash
+[root@beta ~]# /bin/sh
+sh-5.1# ls
+ae.txt  anaconda-ks.cfg
+sh-5.1# cd
+sh-5.1# /bin/bash
+# bash 是大部分情况使用的，但可以指定解释器
+```
+
+#### /etc/default/useradd：创建用户的默认值
+
+```bash
+[root@beta home]# cat /etc/default/useradd
+# useradd defaults file
+GROUP=100
+HOME=/home
+INACTIVE=-1
+EXPIRE=
+SHELL=/bin/bash
+SKEL=/etc/skel
+CREATE_MAIL_SPOOL=yes
+```
+
+> `SKEL=/etc/skel` 是「家目录模板」：新建用户时把这个目录里的 `.bashrc` 等骨架文件拷进新家目录。要给所有新用户预置配置，改这里最省事。
+
+#### /etc/shadow：密码文件
+
+```bash
+[root@beta mail]# cat  /etc/shadow
+root:$6$/J6CF7p6ijGJPYny$aJM0oswfnj4KCFc.vr7521eGTiQyAQ4ta0OpFZZ0HgN5TgcdxZXCdIdtpouascX4Ls78piuMojfm/1QZ0UCh6.::0:99999:7:::
+
+...
+
+king:$6$rounds=100000$P1vUGPZeEWKRxeUV$CI.oL0Oe9J7odMM6MZoRuxDj5wAp3wYDT5PTtLuz5AWFxXeoDPXgJXTrbXZRdp3uLm2eh3DZ/u..Cr5taalof/:20733:0:99999:7:::
+account:$6$rounds=100000$y7jwUhEDgYGfMTHZ$KYFmr6Qd6i9YFPl2dGU6fMZOoTcN0cqkVKEkFfFeuTydMH/7P3U2p//0cmtoz6TZtN6yuz6U8eUVSBjW7wWWV0:20735:0:99999:7:::
+# 相关字段了解即可
+chage -d 0 username    # 强制用户下次登录时改密码
+```
+
+| 字段 | 含义 |
+| --- | --- |
+| 1 | 用户名 |
+| 2 | 加密后的密码（`!` / `*` 开头表示锁定，不能登录） |
+| 3 | 上次改密码距 1970-01-01 的天数 |
+| 4 | 最小修改间隔（天，`0` = 随时可改） |
+| 5 | 密码有效期（天，`99999` = 不过期） |
+| 6 | 到期前多少天开始警告 |
+| 7 | 过期后的宽限天数 |
+| 8 | 账号失效日期（空 = 永不失效） |
+| 9 | 保留位 |
+
+> `/etc/shadow` 权限是 `000`、属主 root——**普通用户读不到**，密码哈希才不会泄露。所以它和 `/etc/passwd` 必须分开：passwd 人人可读，shadow 只有 root 能碰。
+
+
+### 6.2 用户操作
+
+`useradd   username`  添加用户（默认创建同名家目录与同名组）
+
+```text
+u 指定uid
+-g meme 指定组
+-G king  附加组
+-c 'test account' 指定信息
+```
+
+`passwd username `设置/修改密码（不写用户名默认改当前用户）
+
+```bash
+[root@beta mail]# passwd account
+Changing password for user account.
+New password:
+Retype new password:
+passwd: all authentication tokens updated successfully.
+#注意密码规范且能记住即可，但是忘记不能查询
+```
+
+其他的操作
+
+```bash
+userdel username	#删除用户但保留家目录（一般推荐保留）
+
+userdel -r username #删除用户并删除家目录
+
+id username #查询用户 是否存在及其信息
+
+su - username #切换用户，高级切低级是不需要密码de
+
+whoami / who am i #查询当前登录系统的用户信息
+```
+
+`usermod` 修改已有用户（选项与 `useradd` 通用）
+
+```bash
+-u uid           # 改 uid
+-g meme          # 改所属组（主组）
+-G king          # 改附加组
+-c 'test account' # 改注释信息
+
+[root@beta king]# usermod -c iami account
+[root@beta king]# cat /etc/passwd
+...
+account:x:9932:1002:iami:/home/account:/bin/bash
+```
+
+
+
+### 6.3 用户组
+
+> 类似角色，对具有共性/相同权限的用户进行统一管理。未指定组时，`useradd` 会默认创建与用户同名的组。
+
+#### groupadd / groupmod / gpasswd / groupdel
+
+| 命令 | 作用 | 常用选项 |
+| --- | --- | --- |
+| `groupadd 组名` | 添加用户组 | `-g` 指定 GID |
+| `groupmod 组名` | 改组的 GID / 名字 | `-g` 改 GID、`-n 新组名` 改名字，其余同 `groupadd` |
+| `gpasswd 组名` | 管理组成员 | `-a 用户` 加入、`-d 用户` 移出 |
+| `groupdel 组名` | 删除用户组 | 该组仍是某个用户的主组时删不掉 |
+
+```bash
+[root@beta king]# groupadd -g 1004 ea
+[root@beta king]# getent group
+...
+king:x:1000:
+meme:x:1001:
+account:x:1002:
+ea:x:1004:
+
+[root@beta king]# groupdel meme
+[root@beta king]# getent group
+root:x:0:
+...
+king:x:1000:
+account:x:1002:
+ea:x:1004:
+```
+
+> `gpasswd -a` 加的是**附加组**，改主组用 `usermod -g`。一个用户可以有多个附加组，主组只能有一个。
+
+
+
+## 七、权限管理（chmod / chown）
+
+> `chmod` = **ch**ange **mod**e，修改文件或目录的权限。只有**文件属主**或 **root** 能改，普通用户**不能靠它提权**。
+> `chown` / `chgrp` 负责改**属主、属组**。「权限位 + 属主 + 属组」三样合起来，才回答得了「谁能对这个文件做什么」。
+
+### 7.1 权限怎么读：九个字符 + 三类身份
+
+`ls -l` 第一列（如 `-rwxr-xr-x`）去掉开头的类型位，剩下 **9 个字符、每 3 个一组**：
+
+| 分组    | 身份   | 简写         | 说明                               |
+| --- | --- | --- | --- |
+| 第 1 组 | 属主   | `u`（user）  | 文件的拥有者                       |
+| 第 2 组 | 属组   | `g`（group） | 文件所属组的成员                   |
+| 第 3 组 | 其他人 | `o`（other） | 既不是属主、也不在属组里的用户     |
+| —       | 所有人 | `a`（all）   | `u`+`g`+`o` 的简写，只在改权限时用 |
+
+```text
+dr-xr-xr-x. 2 root root 6 Nov  3  2024
+ 				└┬┘└┬┘
+ 				 │  │
+				 │  └── 属组
+ 				 └───── 属主
+-rwxr-xr-x
+ └┬┘└┬┘└┬┘
+  │  │  └── o：其他人 → r-x
+  │  └───── g：属组   → r-x
+  └──────── u：属主   → rwx
+  
+#正如以下，作为专业的使用者应该会在受限环境操作和工作  
+[queen@beta king]$ pwd
+/home/king
+[queen@beta king]$ ls
+ls: cannot open directory '.': Permission denied
+
+[root@beta king]# ll
+total 4
+drwxr-xr-x. 3 king king   35 Oct  7 17:46 apple
+drwxr-xr-x. 2 king king   39 Oct  7 17:46 kingdir
+-rw-r--r--. 1 king king 1100 Oct  7 17:59 logs1.txt
+```
+
+### 7.2 同一个权限位，在文件上和目录的差异
+
+这是最容易被含糊过去的一点：
+
+| 权限 | 对**文件**                   | 对**目录**                             |
+| --- | --- | --- |
+| `r`  | 可以读取内容（`cat`）        | 可以列出里面有哪些文件（`ls`）         |
+| `w`  | 可以修改内容                 | 可以**创建 / 删除 / 重命名**里面的文件 |
+| `x`  | 可以作为程序执行（`./a.sh`） | 可以进入该目录（`cd`）、访问里面的文件 |
+
+> **只给目录 `w` 不给 `x` 是无效的**：能建文件却进不去、也删不掉。目录至少要 `r-x`（即 5）才可用。
+> 反过来，**能不能删掉一个文件，看的是它所在目录的 `w`，而不是文件自己的 `w`**——这一点与 Windows 的直觉相反。所以防误删的有效手段是把目录设成 `555`，而不是给文件去掉写权限。
+
+### 7.3 数字模式
+
+`r=4`、`w=2`、`x=1`，三位相加得到一个数字，三个数字依次对应 u / g / o：
+
+```text
+7 = rwx      6 = rw-      5 = r-x      4 = r--
+3 = -wx      2 = -w-      1 = --x      0 = ---
+```
+
+`chmod 755 dir` 就是：属主 `rwx`、属组 `r-x`、其他人 `r-x`。
+
+| 命令             | 等价权限    | 典型用途                                 |
+| --- | --- | --- |
+| `chmod 644 file` | `rw-r--r--` | 普通文件（网页、配置、源码），**最常用** |
+| `chmod 600 file` | `rw-------` | 私密文件，如 `id_rsa` 私钥               |
+| `chmod 755 dir`  | `rwxr-xr-x` | 目录、可执行程序                         |
+| `chmod 700 dir`  | `rwx------` | 私有目录（家目录默认就是这个）           |
+| `chmod 777 file` | `rwxrwxrwx` | ⚠️ 所有人全权限，危险，别用               |
+
+```bash
+# 缺 r 列不出目录，缺 x 进不去目录，缺 w 写不进
+# 初始权限用数字定义很方便，但后期管理推荐用符号模式
+[root@beta king]# cd sharefile/
+[root@beta sharefile]# mkdir log
+[root@beta sharefile]# mkdir config
+[root@beta sharefile]# chmod 755 log
+[root@beta sharefile]# chmod 700 config/
+[root@beta sharefile]# su queen
+[queen@beta sharefile]$ cd log
+[queen@beta log]$ ls -la
+total 0
+drwxr-xr-x. 2 root root  6 Oct 10 11:27 .
+drwxr-xr-x. 4 root root 31 Oct 10 11:28 .
+```
+
+#### umask：新建文件的默认权限
+
+```bash
+[root@beta sharefile]# umask
+0022
+# 第一位是特殊权限位
+[root@beta sharefile]# umask -S
+u=rwx,g=rx,o=rx
+```
+
+> `umask` 是「要**减掉**的权限」：目录从 `777` 减、文件从 `666` 减。
+> `0022` → 目录 `755`、文件 `644`（root 默认）；`0002` → 目录 `775`、文件 `664`（普通用户默认，同组可写）。
+> 它是**进程属性**，只影响之后新建的文件，`chmod` 是事后改；两者不冲突但别指望 umask 去改已有文件。
+
+### 7.4 符号模式
+
+格式：
+
+```bash
+chmod [ugoa][+-=][rwxXst] 文件
+```
+
+| 部分 | 取值                       | 含义                         |
+| --- | --- | --- |
+| 身份 | `u` / `g` / `o` / `a`      | 不写默认 `a`（所有人）       |
+| 操作 | `+` 加 / `-` 减 / `=` 设为 | `=` 会把没列出的权限一并清掉 |
+| 权限 | `r` `w` `x`                | 此外还有 `X` `s` `t`，见下   |
+
+```bash
+chmod +x script.sh          # 给所有人加执行权限（脚本变可执行）
+chmod u+x script.sh         # 只给属主加执行
+chmod go-w file             # 去掉属组和其他人的写权限
+chmod a+r file              # 所有人可读
+chmod u=rwx,g=rx,o= file    # 等价于 chmod 750
+chmod -R u+rwX,go+rX dir    # 递归设置目录树的常用组合
+
+[root@beta sharefile]# chmod o+rwx daer.txt 
+[root@beta sharefile]# su king
+[king@beta sharefile]$ cat daer.txt 
+[king@beta sharefile]$ vi daer.txt 
+[king@beta sharefile]$ exit
+exit
+[root@beta sharefile]# su queen
+[queen@beta sharefile]$ cat daer.txt 
+love
+[queen@beta sharefile]$ 
+```
+
+> 大写 **`X`** 是小写 `x` 的「条件版本」：**只有目录、或原本就带执行权限的文件**才会被加上 `x`。递归处理目录树时必须用它——否则一条 `-R a+x` 会把 `.c`、`.h`、`.txt` 全变成「可执行文件」，既难看又给源码平白加了执行位。
+
+### 7.5 特殊权限：setuid / setgid / sticky
+
+四位数字模式的第一位就是特殊权限位：
+
+| 数字 | 名称               | 符号写法         | 作用                                               | 在 `ls -l` 里长这样 |
+| --- | --- | --- | --- | --- |
+| 4    | **setuid**（SUID） | `chmod u+s file` | 执行时**以文件属主的身份**运行，而不是调用者身份   | `-rwsr-xr-x`        |
+| 2    | **setgid**（SGID） | `chmod g+s dir`  | 目录下新建的文件**继承该目录的属组**               | `drwxr-sr-x`        |
+| 1    | **sticky**         | `chmod +t dir`   | 目录里只有**文件属主、目录属主或 root** 能删除文件 | `drwxrwxrwt`        |
+
+```bash
+chmod 4755 file    # setuid
+chmod 2755 dir     # setgid：目录里新建文件自动归属该组，团队共享目录常这么配
+chmod 1777 /tmp    # sticky：人人可写、但只能删自己的文件
+```
+
+> **`/tmp` 的 `1777` 就是 sticky 的经典应用**——所以谁都能在 `/tmp` 里建文件，却删不掉别人的。
+> `setuid` 是把双刃剑：`passwd` 让普通用户也能改密码（它要写 `/etc/shadow`），靠的正是 setuid。但别自己随手给程序加 setuid，一旦程序有输入漏洞，攻击者就能借它拿 root。
+
+### 7.6 改属主与属组：chown / chgrp
+
+权限位和属主是两件独立的事：**属主不对，`chmod` 给再多权限也没用**。
+
+| 命令                    | 作用             | 示例                                   |
+| --- | --- | --- |
+| `chown 用户 文件`       | 改属主           | `chown monitor /home/monitor/makefile` |
+| `chgrp 组 文件`         | 改属组           | `chgrp monitor /home/monitor/makefile` |
+| `chown 用户:组 文件`    | 同时改属主与属组 | `chown monitor:monitor file`           |
+| `chown -R 用户:组 目录` | 递归改整个目录树 | `chown -R monitor:monitor .`           |
+| `stat -c '%U %G' 文件`  | 只看属主与属组   | `stat -c '%U %G' makefile`             |
+
+```text
+# 改之前
+$ stat -c '%U %G' makefile
+root root
+
+$ chown monitor /home/monitor/makefile
+$ chgrp monitor /home/monitor/makefile
+
+# 改之后
+$ stat -c '%U %G' makefile
+monitor monitor
+```
+
+> **只有 root 能把文件「送」给别人。** 普通用户不能 `chown` 给他人（哪怕是想把自己的文件交出去也不行，这是防止绕开配额与审计的机制），所以 `chown` 实际都由 root / sudo 执行。
+
+### 7.7 实战：把 root 建的目录交还给普通用户
+
+典型场景：用 root 编译或拷贝了一堆文件到某个用户的目录下，属主全是 `root`，用户自己改不了也删不掉。
+
+```text
+$ ls -l /home/monitor/makefile
+-rw-r--r-- 1 root root   169 Sep 17 14:37 cal.c
+-rw-r--r-- 1 root root   432 Sep 17 14:37 in.c
+-rw-r--r-- 1 root root    93 Sep 17 14:30 makefile
+-rw-r--r-- 1 root root   264 Sep 17 14:37 out.c
+-rwxr-xr-x 1 root root 26112 Sep 17 14:38 stuscore      ← 可执行文件
+-rw-r--r-- 1 root root   274 Sep 17 14:37 stuscore.c
+-rw-r--r-- 1 root root   187 Sep 17 14:37 stuscore.h
+```
+
+处理顺序是「**先改属主 → 再按目录/文件分别设权限 → 最后单独补可执行位**」：
+
+```bash
+# ① 递归改属主属组（这是根因；权限位再对，属主不对也没用）
+chown -R monitor:monitor .
+
+# ② 目录统一 755、文件统一 644（用 find 区分类型，而不是一把 -R 755）
+find . -type d -exec chmod 755 {} +
+find . -type f -exec chmod 644 {} +
+
+# ③ 只给需要执行的那个文件补执行位
+chmod 755 stuscore
+
+# ④ 核对
+ls -la
+```
+
+```text
+-rw-r--r-- 1 monitor monitor   169 Sep 17 14:37 cal.c
+-rw-r--r-- 1 monitor monitor   432 Sep 17 14:37 in.c
+-rw-r--r-- 1 monitor monitor    93 Sep 17 14:30 makefile
+-rw-r--r-- 1 monitor monitor   264 Sep 17 14:37 out.c
+-rwxr-xr-x 1 monitor monitor 26112 Sep 17 14:38 stuscore     ← 执行位保留
+-rw-r--r-- 1 monitor monitor   274 Sep 17 14:37 stuscore.c
+-rw-r--r-- 1 monitor monitor   187 Sep 17 14:37 stuscore.h
+```
+
+> **为什么不直接 `chmod -R 755 .`**：那样 `.c`、`.h`、`makefile` 全带上执行位，`ls` 输出一片高亮，看着就乱，给源码加执行位也毫无意义。「**目录 755 + 文件 644 + 需要执行的单独设**」这套三步法适用于绝大多数目录树。
+> `find ... -exec chmod ... {} +` 结尾的 `{} +` 表示**把所有匹配到的路径一次性传给同一个 chmod 进程**；换成 `{} \;` 则是每个文件起一个进程，文件多了会慢一个量级。
+
+### 7.8 避坑清单
+
+| 坑                           | 说明                                                         |
+| --- | --- |
+| `chmod -R 777 /`             | ⚠️ **绝对不能执行**。整个系统权限全开、安全归零，且没有一次性回滚的办法。 |
+| 报 `Operation not permitted` | 你不是文件属主、也不是 root。**`chmod` 不能提权**，只能由管理员用 `sudo` / `chown` / `setfacl` 处理。 |
+| 改了权限还是不能写           | 先看属主对不对（`ls -l` 第三列）；属主不对就先 `chown`。     |
+| 给目录加了 `w` 仍进不去      | 目录缺 `x`，补上（`chmod u+rwx dir`）。                      |
+| `cp` 过来属主变了            | `cp` 默认把属主设成**当前操作用户**；要保留权限与时间戳加 `-p`，属主本身仍需 root 才能改。 |
+| 图省事用 `-R 777`            | 反面教材。该改的是属主与属组，不是把门全打开。               |
+
+### 7.9 小结
+
+> 权限 = 「属主 / 属组 / 其他人」各 3 位；读 `r`(4)、写 `w`(2)、执行 `x`(1)；落到目录上分别意味着「能列出文件」「能增删文件」「能进去」。**属主不对先 `chown`，权限不对再 `chmod`。**
+
+**六条核心**：
+
+1. `chmod` 改权限位，`chown` / `chgrp` 改属主属组，**属主是前提**；
+2. 三位一组依次对应 u / g / o，`a` 是三者之和；
+3. 目录的 `w` 管「能不能删里面的文件」，文件的 `w` 管「能不能改内容」——**删文件看目录**；
+4. 目录必须有 `x` 才能进得去、才能访问里面的文件；
+5. 常用档位：普通文件 `644`、私密文件 `600`、目录与可执行 `755`、私有目录 `700`；
+6. **`chmod -R 777` 是红线**；批量整目录用「目录 755 + 文件 644 + 单独补 `x`」三步走。
+
+---
+
+## 八、文件系统与磁盘
+
+### 8.1 压缩与解压
+
+#### gzip / bzip2 / xz
+
+> 这三者只压**单个文件**（压完原文件消失，生成 `.gz` / `.bz2` / `.xz`）。压目录会报 `is a directory -- ignored`——**打包目录要用 `tar`**。
+
+| 命令 | 压缩 | 解压 | 不解压查看 |
+| --- | --- | --- | --- |
+| `gzip` | `gzip file` | `gzip -d file.gz`（同 `gunzip`） | `zcat` |
+| `bzip2` | `bzip2 file` | `bzip2 -d file.bz2` | `bzcat` |
+| `xz` | `xz file` | `xz -d file.xz` | `xzcat` |
+
+```bash
+[root@beta home]# gzip king/sharefile/app
+gzip: king/sharefile/app is a directory -- ignored
+[root@beta home]# gzip king/sharefile/app/springboot-app.log
+[root@beta home]# cd king/sharefile/app/
+[root@beta app]# ls
+springboot-app.log.gz
+
+[root@beta app]# zcat springboot-app.log.gz
+2026-10-10 00:00:53.210  INFO 1 --- [nio-8080-exec-3] c.w.repository.OrderMapper : POST /api/v1/login 200 in 243ms user=ops
+2026-10-10 00:02:02.799 ERROR 1 --- [nio-8080-exec-3] c.w.controller.UserController : Failed to load user 4326
+```
+
+> 排查线上日志时 `zcat` / `zgrep` 最省事：**不用解压就能 grep 已经轮转过的 `.gz` 日志**。
+
+#### tar 打包工具
+
+| 选项 | 作用 |
+| --- | --- |
+| `-c` | 创建打包文件 |
+| `-x` | 解包 |
+| `-t` | 列出包里的内容（不解压先看一眼） |
+| `-f` | 指定包名（**必须紧跟包名，组合选项时放最后**） |
+| `-z` | 调用 gzip 压缩 / 解压，产出 `.tar.gz`；小文件其实没必要 |
+| `-C` | 指定解压路径 |
+| `-v` | 显示详细过程 |
+
+```bash
+[root@beta home]# tar -vczf am.tar king/sharefile/
+king/sharefile/
+...
+king/sharefile/syslog/messages
+
+[root@beta home]# tar -tf log.tar
+king/sharefile/
+...
+king/sharefile/syslog/messages
+```
+
+> 常用组合：打包 `tar -czf xxx.tar.gz dir/`、解包 `tar -xzf xxx.tar.gz -C /目标路径`、先看内容 `tar -tf xxx.tar.gz`。
+
+### 8.2 磁盘与分区
+
+#### 磁盘命名与容量查看
+
+| 命令 | 作用 |
+| --- | --- |
+| `lsblk` | 看块设备与挂载点的树状关系 |
+| `df -h` | 看**已挂载文件系统**的剩余空间 |
+| `du -sh dir` | 看某个目录实际占了多大 |
+
+> 设备命名：`/dev/sdX` 是 SATA/SCSI/USB 盘，`/dev/nvme0n1p1` 是 NVMe（`p` 后面是分区号），`/dev/vdX` 是虚拟机 virtio 盘。
+
+#### 分区表：MBR 与 GPT
+
+| 分区表 | 分区数量 | 容量上限 | 说明 |
+| --- | --- | --- | --- |
+| MBR | 最多 4 个主分区；或用「3 主 + 1 扩展」，扩展分区里再分逻辑分区 | 2 TB | 老机器、BIOS 启动 |
+| GPT | 最多 128 个分区 | 远超 2 TB | 现在的默认，配 UEFI 启动 |
+
+#### lsblk 查看块设备
+
+```bash
+[root@beta home]# lsblk
+NAME         MAJ:MIN RM  SIZE RO TYPE MOUNTPOINTS
+sr0           11:0    1  2.6G  0 rom
+nvme0n1      259:0    0   20G  0 disk
+├─nvme0n1p1  259:1    0    1G  0 part /boot
+└─nvme0n1p2  259:2    0   19G  0 part
+  ├─rlm-root 253:0    0   17G  0 lvm  /
+  └─rlm-swap 253:1    0    2G  0 lvm  [SWAP]
+
+[root@beta home]# lsblk -s
+NAME        MAJ:MIN RM  SIZE RO TYPE MOUNTPOINTS
+rlm-root    253:0    0   17G  0 lvm  /
+└─nvme0n1p2 259:2    0   19G  0 part
+  └─nvme0n1 259:0    0   20G  0 disk
+rlm-swap    253:1    0    2G  0 lvm  [SWAP]
+└─nvme0n1p2 259:2    0   19G  0 part
+  └─nvme0n1 259:0    0   20G  0 disk
+nvme0n1p1   259:1    0    1G  0 part /boot
+└─nvme0n1   259:0    0   20G  0 disk
+
+[root@beta home]# lsblk -d
+NAME    MAJ:MIN RM  SIZE RO TYPE MOUNTPOINTS
+sr0      11:0    1  2.6G  0 rom
+nvme0n1 259:0    0   20G  0 disk
+
+[root@beta home]# lsblk -f
+NAME FSTYPE FSVER LABEL UUID                                   FSAVAIL FSUSE% MOUNTPOINTS
+sr0  iso966 Jolie Rocky-9-8-x86_64-dvd
+                        2026-05-25-22-21-39-00
+nvme0n1
+├─nvme0n1p1
+│    xfs                9c104b60-e213-4e78-98de-32c814536ffb    561.1M    42% /boot
+└─nvme0n1p2
+     LVM2_m LVM2        Jr7olY-keG7-Onww-7IYU-e8VE-MONF-rrtOru
+  ├─rlm-root
+  │  xfs                8de4effe-89d3-4181-a716-4f88be877104     15.1G    11% /
+  └─rlm-swap
+     swap   1           51a5805e-0211-4faa-91af-8979041d1fe2                  [SWAP]
+```
+
+| 选项 | 作用 |
+| --- | --- |
+| `-s` | 反向显示（从分区 / LVM 倒着看它属于哪块盘） |
+| `-d` | 只看整块磁盘，不列分区 |
+| `-f` | 显示文件系统类型、UUID、挂载点 |
+
+### 8.3 文件系统
+
+| 文件系统 | 特点 | 常见场景 |
+| --- | --- | --- |
+| xfs | 大文件 / 大分区性能好，支持在线扩容，**不能缩容** | RHEL / Rocky / CentOS 默认 |
+| ext4 | 最通用、稳，修复工具成熟，可扩可缩 | Debian / Ubuntu 默认，通用场景 |
+| swap | 交换分区，不是用来存文件的 | 内存不足时的兜底 |
+
+```bash
+mkfs.xfs /dev/sdb1        # 格式化（会清空数据！）
+mount /dev/sdb1 /data     # 挂载
+df -Th                    # 看已挂载的文件系统类型与用量
+```
+
+> 开机自动挂载写 `/etc/fstab`，**改完必须 `mount -a` 验一遍**——写错了重启会直接进救援模式。
+
+
+## 九、运行级别
 
 | 级别 | 说明 |
 | --- | --- |
@@ -1326,7 +1620,7 @@ init [0123456]       # 切换不同运行级别
 
 ---
 
-## 九、帮助命令
+## 十、帮助命令
 
 ### man
 
@@ -1342,12 +1636,12 @@ help cd       # 获得 shell 内置命令的帮助信息
 
 ---
 
-## 十、进阶专题：退出登录后下载任务停止：原因与解决/避免方法
+## 十一、进阶专题：退出登录后，下载任务为什么会停
 
 > 适用范围：SSH 远程登录、本地终端、`su`/`sudo` 切换的会话。
 > 关键词：SIGHUP、会话（session）、进程组、systemd-logind、断点续传。
 
-### 10.1 为什么会停：三条独立的"kill 路径"
+### 11.1 为什么会停：三条独立的"kill 路径"
 
 | # | 触发机制 | 原理 | 影响范围 | 是否常见 |
 | --- | --- | --- | --- | --- |
@@ -1363,7 +1657,7 @@ help cd       # 获得 shell 内置命令的帮助信息
 - `&` 放到后台**不等于**脱离会话：它仍在同一 session、同一进程组，照样收 `SIGHUP`。
 - 如果只是网络断了（SSH TCP 超时），本地 `wget` 直连其实还能跑；真正致命的是终端/会话消失。
 
-### 10.2 如何判断进程是否真的"脱钩"
+### 11.2 如何判断进程是否真的"脱钩"
 
 ```bash
 ps -o pid,ppid,pgid,sid,tty,stat,cmd -p <PID>
@@ -1387,7 +1681,7 @@ loginctl show-session $XDG_SESSION_ID  # 看 KillProcesses / Scope
 grep -E 'KillUserProcesses|RemoveIPC' /etc/systemd/logind.conf
 ```
 
-### 10.3 解决方案（按推荐度排序）
+### 11.3 解决方案（按推荐度排序）
 
 #### 方案 A：进程脱钩（最快，适合一次性任务）
 
@@ -1521,7 +1815,7 @@ wget -c --spider URL       # 探测是否支持续传
 ls -l --time-style=full-iso big.iso   # 观察大小是否仍在增长
 ```
 
-### 10.4 方案选择速查
+### 11.4 方案选择速查
 
 | 场景 | 推荐做法 | 抗 ①②③ |
 | --- | --- | --- |
@@ -1531,7 +1825,7 @@ ls -l --time-style=full-iso big.iso   # 观察大小是否仍在增长
 | 已经在跑、来不及重启 | `Ctrl-Z` → `bg` → `disown -h %1` | ①② |
 | root 长期任务 | 系统级 systemd unit | ①②③ |
 
-### 10.5 避坑清单
+### 11.5 避坑清单
 
 1. **`nohup` 不是万能的** —— 它只挡 `SIGHUP`，挡不住 logind 的 cgroup 清理。长任务请加 `setsid` 或走 systemd。
 2. **管道里只有第一个命令被保护**：`nohup wget URL | tee log &` 中 `nohup` 只作用于 `wget`，`tee` 仍会死。整条管道请包一层：`nohup bash -c 'wget URL | tee log' &`
@@ -1549,7 +1843,7 @@ ls -l --time-style=full-iso big.iso   # 观察大小是否仍在增长
        TCPKeepAlive yes
    ```
 
-### 10.6 结论
+### 11.6 结论
 
 > 退出登录后下载停止，**根因是进程仍绑定在登录会话上**（收 `SIGHUP`）或**被 logind 随会话回收**。
 > 对策就三层：**`setsid`/`nohup` 脱钩 → `tmux` 保活 → `systemd + linger` 托管**；

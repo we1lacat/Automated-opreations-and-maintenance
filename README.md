@@ -29,7 +29,7 @@ Log system/      日志与可观测
 
 | 文件 | 规模 | 覆盖内容 |
 |------|------|---------|
-| [`Linux-note.md`](Linux/Linux-note.md) | 1109 行 | 一切皆文件、目录结构、文件与目录操作（含 `ls` 长格式逐列详解）、Vim、开关机与登录注销、用户与用户组、**权限管理**（chmod / chown、属主属组、数字与符号模式、setuid·setgid·sticky、批量修复目录权限）、**文本三剑客**（grep / sed / awk、正则 BRE 与 ERE、管道符与重定向）、运行级别、帮助命令；进阶专题：退出登录后任务中断的原因与解法（nohup / setsid / tmux / screen / systemd user） |
+| [`Linux-note.md`](Linux/Linux-note.md) | 1850 行 | 一切皆文件、目录结构、文件与目录操作（含 `ls` 长格式逐列详解）、Vim、开关机与登录注销、用户数据文件（`/etc/passwd`·`/etc/shadow`·`/etc/default/useradd`）与用户·组管理、**权限管理**（chmod / chown、属主属组、数字与符号模式、umask、setuid·setgid·sticky、批量修复目录权限）、**文本三剑客**（grep / sed / awk、正则 BRE 与 ERE、管道符与重定向）、find 查找与 `-exec`、**文件系统与磁盘**（tar / gzip·bzip2·xz、磁盘命名与容量查看、MBR 与 GPT、lsblk、xfs / ext4）、运行级别、帮助命令；进阶专题：退出登录后任务中断的原因与解法（nohup / setsid / tmux / screen / systemd user） |
 | [`shell-note-zh.md`](Linux/shell-note-zh.md) | 870 行 | Shell 编程中文版：shebang、Bash 特性、父 shell 与子 shell 执行环境、变量、字符串操作、命令、脚本开发（函数 / 运算 / 条件 / 循环） |
 | [`shell.md`](Linux/shell.md) | 842 行 | 英文原稿，章节一一对应；保留英文是想练原版术语的可以直接读 |
 | [`docker-note.md`](container/docker-note.md) | 2462 行 | 安装、Docker 结构与镜像原理、常用命令、容器卷、Dockerfile（含分层缓存与构建实战）、Docker 网络（docker0 / veth pair / 自定义网络）、Compose、Swarm 集群与 stack/secret |

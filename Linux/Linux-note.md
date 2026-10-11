@@ -88,6 +88,18 @@ Last login: Wed Oct  7 15:45:25 2026
 
 ### 3.4 目录操作
 
+#### man
+
+```bash
+man ls        # 获得命令或配置文件的帮助信息
+```
+
+#### help
+
+```bash
+help cd       # 获得 shell 内置命令的帮助信息
+```
+
 #### cd
 
 ```bash
@@ -98,7 +110,7 @@ cd ..              # 回到上级目录
 cd ../../root      # 从 nono 回到 root（多级向上）
 ```
 
-相对路径和绝对路径
+##### 相对路径和绝对路径
 
 ```bash
 [king@node2 ~]$ cd /home/king/apple/futa/badend/
@@ -108,9 +120,10 @@ cd ../../root      # 从 nono 回到 root（多级向上）
 [king@node2 ~]$ cd apple/futa/badend/
 [king@node2 badend]$ pwd
 /home/king/apple/futa/badend
+#相对于工作目录和绝对与于根目录
 ```
 
-相对于工作目录和绝对与于根目录
+.和..
 
 ```bash
 #.当前目录
@@ -1015,7 +1028,6 @@ find king/sharefile/ -name '*log*' -size +1k -exec ls -lh {} +
 > `*log*` 必须加引号，避免被当前 shell 提前展开。
 > `ll` 是别名，`find -exec` 认不出来，要写 `ls -l` / `ls -lh`。
 
-
 ## 四、Vim 编辑器
 
 | 模式       | 进入方式                                              |
@@ -1116,7 +1128,6 @@ chage -d 0 username    # 强制用户下次登录时改密码
 
 > `/etc/shadow` 权限是 `000`、属主 root——**普通用户读不到**，密码哈希才不会泄露。所以它和 `/etc/passwd` 必须分开：passwd 人人可读，shadow 只有 root 能碰。
 
-
 ### 6.2 用户操作
 
 `useradd   username`  添加用户（默认创建同名家目录与同名组）
@@ -1167,8 +1178,6 @@ whoami / who am i #查询当前登录系统的用户信息
 account:x:9932:1002:iami:/home/account:/bin/bash
 ```
 
-
-
 ### 6.3 用户组
 
 > 类似角色，对具有共性/相同权限的用户进行统一管理。未指定组时，`useradd` 会默认创建与用户同名的组。
@@ -1202,8 +1211,6 @@ ea:x:1004:
 
 > `gpasswd -a` 加的是**附加组**，改主组用 `usermod -g`。一个用户可以有多个附加组，主组只能有一个。
 
-
-
 ## 七、权限管理（chmod / chown）
 
 > `chmod` = **ch**ange **mod**e，修改文件或目录的权限。只有**文件属主**或 **root** 能改，普通用户**不能靠它提权**。
@@ -1231,8 +1238,8 @@ dr-xr-xr-x. 2 root root 6 Nov  3  2024
   │  │  └── o：其他人 → r-x
   │  └───── g：属组   → r-x
   └──────── u：属主   → rwx
-  
-#正如以下，作为专业的使用者应该会在受限环境操作和工作  
+
+#正如以下，作为专业的使用者应该会在受限环境操作和工作
 [queen@beta king]$ pwd
 /home/king
 [queen@beta king]$ ls
@@ -1329,16 +1336,16 @@ chmod a+r file              # 所有人可读
 chmod u=rwx,g=rx,o= file    # 等价于 chmod 750
 chmod -R u+rwX,go+rX dir    # 递归设置目录树的常用组合
 
-[root@beta sharefile]# chmod o+rwx daer.txt 
+[root@beta sharefile]# chmod o+rwx daer.txt
 [root@beta sharefile]# su king
-[king@beta sharefile]$ cat daer.txt 
-[king@beta sharefile]$ vi daer.txt 
+[king@beta sharefile]$ cat daer.txt
+[king@beta sharefile]$ vi daer.txt
 [king@beta sharefile]$ exit
 exit
 [root@beta sharefile]# su queen
-[queen@beta sharefile]$ cat daer.txt 
+[queen@beta sharefile]$ cat daer.txt
 love
-[queen@beta sharefile]$ 
+[queen@beta sharefile]$
 ```
 
 > 大写 **`X`** 是小写 `x` 的「条件版本」：**只有目录、或原本就带执行权限的文件**才会被加上 `x`。递归处理目录树时必须用它——否则一条 `-R a+x` 会把 `.c`、`.h`、`.txt` 全变成「可执行文件」，既难看又给源码平白加了执行位。
@@ -1583,22 +1590,310 @@ nvme0n1
 | `-d` | 只看整块磁盘，不列分区 |
 | `-f` | 显示文件系统类型、UUID、挂载点 |
 
+#### /dev 下的设备文件
+
+```bash
+ls /dev
+```
+
+| 设备名 | 含义 |
+| --- | --- |
+| `hd[a-z]` | IDE 硬盘（已基本淘汰） |
+| `sd[a-z]` | SCSI / SATA / USB 硬盘，磁盘与分区：`sda` 是整盘、`sda1` 是分区 |
+| `vd[a-z]` | virtio 虚拟磁盘（虚拟机常见） |
+| `nvme0n1p1` | NVMe 盘，`p` 后面是分区号 |
+| `fd[0-7]` | 软盘 |
+| `md[0-32]` | 软 RAID 设备 |
+| `loop[0-7]` | 本地回环设备 |
+| `lp[0-3]` | 打印设备 |
+| `tty[0-63]` | 虚拟终端设备 |
+| `mem` | 内存设备 |
+| `null` | 空设备（黑洞文件），写入内容直接丢弃，`2>/dev/null` 就是它 |
+| `zero` | 零设备，写入任何内容都变成全 0 |
+| `full` | 满设备，写入必然失败（磁盘满时的模拟） |
+| `random` | 真随机数设备（会阻塞等待熵） |
+| `urandom` | 伪随机数设备（不阻塞，日常够用） |
+| `port` | 存取 I/O 端口 |
+
+> 块设备（磁盘、分区）在 `/dev` 下能看到，但**不能直接 `cat`**——必须先 `mount` 才能读到里面的数据，见 8.3。
+
+#### 分区与格式化：fdisk
+
+> ⚠️ **写 `w` 之前一定要想清楚**：分区表是硬盘上的第一个扇区，换分区表格式等于**覆盖整块盘的分区记录**，原有分区和系统都可能起不来。
+
+```bash
+[root@beta ~]# fdisk -l          # 列出所有磁盘的分区表
+Disk /dev/nvme0n1: 20 GiB, 21474836480 bytes, 41943040 sectors
+...
+I/O size (minimum/optimal): 512 bytes / 512 bytes
+```
+
+进入编辑模式后所有改动**只存在内存里**，不 `w` 就退出等于什么都没做：
+
+```bash
+fdisk /dev/sda
+```
+
+子命令速查：
+
+| 键 | 作用 |
+| --- | --- |
+| `m` | 打印全部命令帮助 |
+| `n` | 新建分区 |
+| `p` | 打印当前分区表 |
+| `d` | 删除分区 |
+| `t` | 修改分区类型 |
+| `F` | 列出未分配空间 |
+| `l` | 列出已知分区类型 |
+| `v` | 校验分区表 |
+| `u` | 切换显示单位（sectors / MiB） |
+| `w` | **写入磁盘并退出** |
+| `q` | 不保存退出 |
+
+下面是一次完整实操：建 3 个主分区（3G + 2G + 2G）后主分区用完，**第 4 个只能是扩展分区**，扩展分区里再继续划逻辑分区 5：
+
+```bash
+fdisk /dev/sda
+
+# 建 p1（+3G）、p2（+2G）、p3（+2G）……
+Command (m for help): n
+Partition type
+   p   primary (3 primary, 0 extended, 1 free)
+   e   extended (container for logical partitions)
+Select (default e): e
+Selected partition 4
+First sector (14682112-41943039, default 14682112):
+Last sector, +/-sectors or +/-size{K,M,G,T,P} (14682112-41943039, default 41943039):
+
+Created a new partition 4 of type 'Extended' and of size 13 GiB.
+
+# 扩展分区里划逻辑分区
+Command (m for help): n
+All primary partitions are in use.
+Adding logical partition 5
+First sector (14684160-41943039, default 14684160):
+Last sector, +/-sectors or +/-size{K,M,G,T,P} (14684160-41943039, default 41943039): +1G
+
+Created a new partition 5 of type 'Linux' and of size 1 GiB.
+
+# 打印分区表核对
+Command (m for help): p
+Device     Boot    Start      End  Sectors Size Id Type
+/dev/sda1           2048  6293503  6291456   3G 83 Linux
+/dev/sda2        6293504 10487807  4194304   2G 83 Linux
+/dev/sda3       10487808 14682111  4194304   2G 83 Linux
+/dev/sda4       14682112 41943039 27260928  13G  5 Extended
+/dev/sda5       14684160 16781311  2097152   1G 83 Linux
+
+# 输入 w 才会真正写入磁盘
+Command (m for help): w
+```
+
+> 分完区只定义了「边界」，还不能存数据——要 `mkfs` 建文件系统 + `mount` 挂上才能用，见 **8.3 文件系统**。
+> 逻辑分区**不能单独 `w` 或格式化**：`/dev/sda5` 要通过 `/dev/sda4` 才能访问，所以必须先格式化扩展分区，逻辑分区块才能写进去。
+
+#### GPT 分区格式
+
+用 `g` 直接在 fdisk 里创建 GPT 标签，之后的操作与 MBR 完全一致：
+
+```bash
+fdisk /dev/sdb
+Command (m for help): g       # 创建新的空 GPT 分区表
+Created a new GPT disklabel (GUID: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx).
+Command (m for help): n       # 建分区操作与 MBR 一样
+```
+
+> GPT 没有「主分区 / 扩展分区 / 逻辑分区」之分，也没有 4 个主分区的限制，最多 128 个分区（对比见 8.2 的 MBR / GPT 表）。
+> 容易混的两个键：`g` 是**换分区表格式**，`t` 是改**单个分区的类型**；`l` 才是列出可用分区类型。
+
 ### 8.3 文件系统
+
+分区只是划出了边界，要真正存数据还得建文件系统——Linux 没有「格式化」这个说法，它是在分区上写一套**数据结构 + 超级块**，让系统知道这块空间怎么用（所以叫 mkfs，**m**a**k**e **f**ile**s**ystem）。
 
 | 文件系统 | 特点 | 常见场景 |
 | --- | --- | --- |
-| xfs | 大文件 / 大分区性能好，支持在线扩容，**不能缩容** | RHEL / Rocky / CentOS 默认 |
+| xfs | 大文件 / 大分区性能好，支持**在线扩容**，**不能缩容** | RHEL / Rocky / CentOS 默认 |
 | ext4 | 最通用、稳，修复工具成熟，可扩可缩 | Debian / Ubuntu 默认，通用场景 |
 | swap | 交换分区，不是用来存文件的 | 内存不足时的兜底 |
 
 ```bash
-mkfs.xfs /dev/sdb1        # 格式化（会清空数据！）
-mount /dev/sdb1 /data     # 挂载
+mkfs.xfs /dev/sdb1        # 建 xfs 文件系统（会清空数据！）
+mkfs.ext4 /dev/sdb1       # 建 ext4
 df -Th                    # 看已挂载的文件系统类型与用量
 ```
 
-> 开机自动挂载写 `/etc/fstab`，**改完必须 `mount -a` 验一遍**——写错了重启会直接进救援模式。
+#### mount：挂载
 
+分区只是划出了边界，**不挂载就没有可用的目录**——挂载就是把文件系统挂到一个目录上，之后访问该目录就是访问文件系统。
+
+挂载的三个硬性要求：
+
+1. 挂载点必须是**已存在的目录**（`mount -a` 时通常要求为空，否则会遮住原有文件）；
+2. 同一个设备**不能重复挂载到多个目录**；
+3. 一个目录**不能同时挂载多个设备**。
+
+```bash
+mount /dev/sda1 /db-bak/      # 设备 挂载点
+df -h                         # 验证：末尾应出现挂载点那一行
+Filesystem            Size  Used Avail Use% Mounted on
+devtmpfs              1.8G     0  1.8G   0% /dev
+tmpfs                 1.8G     0  1.8G   0% /dev/shm
+tmpfs                 725M  9.1M  716M   2% /run
+/dev/mapper/rlm-root   17G  1.9G   16G  11% /
+/dev/nvme0n1p1        960M  399M  562M  42% /boot
+/dev/sda1             3.0G   54M  2.9G   2% /db-bak
+```
+
+| 选项 | 作用 |
+| --- | --- |
+| `-a` | 依照 `/etc/fstab` 里的配置依次挂载 |
+| `-o` | 挂载时追加额外参数（如 `-o ro` 只读、`-o remount,rw` 重挂并改权限） |
+| `-t` | 指定文件系统类型（多数情况可省略，系统按超级块自动识别） |
+
+> 改完 `/etc/fstab` 若提示 `systemd still uses the old version`，执行 `systemctl daemon-reload` 让 systemd 重新读取——**不刷新的后果是重启后按旧配置挂载**。
+
+#### umount：卸载
+
+```bash
+umount /db-bak/          # 卸载挂载点，不是设备名
+df -h                    # 确认挂载点那一行已消失
+```
+
+> 报 `target is busy` 说明还有进程在用这个目录（`lsof +D /db-bak/` 或 `fuser -vm /db-bak/` 查），先退出该目录 / 停掉进程再卸载。
+> 正在被写入时强行卸载容易丢数据，**卸载前先 `sync`**。
+
+#### /etc/fstab：开机自动挂载（挂载持久化）
+
+```bash
+[root@beta ~]# cat /etc/fstab
+
+#
+# /etc/fstab
+# Created by anaconda on Wed Oct  7 07:19:16 2026
+#
+# Accessible filesystems, by reference, are maintained under '/dev/disk/'.
+# See man pages fstab(5), findfs(8), mount(8) and/or blkid(8) for more info.
+#
+# After editing this file, run 'systemctl daemon-reload' to update systemd
+# units generated from this file.
+#
+/dev/mapper/rlm-root    /                       xfs     defaults        0 0
+UUID=9c104b60-e213-4e78-98de-32c814536ffb /boot                   xfs     defaults        0 0
+/dev/mapper/rlm-swap    none                    swap    defaults        0 0
+
+# 依据格式编写即可
+/dev/sda1        /db-bak      xfs     defaults        0 0
+```
+
+六个字段的含义：
+
+| 字段 | 含义 |
+| --- | --- |
+| 1 设备 | 文件系统所在设备，**强烈建议用 `UUID=`** 而不是 `/dev/sda1`（设备名会随插拔、重装变化） |
+| 2 挂载点 | 挂载目录 |
+| 3 类型 | 文件系统类型（`xfs` / `ext4` / `swap` / `auto`） |
+| 4 选项 | `defaults` = `rw,suid,dev,exec,auto,nouser,async` |
+| 5 dump | 备份频率，`0` 表示不 dump（现代系统基本都是 0） |
+| 6 pass | 非 0 时开机按顺序检查依赖；`0` = 不检查，网络文件系统才用 1 / 2 |
+
+> 改完**必须 `mount -a` 验一遍**，写错会直接进救援模式：
+> - 设备名写错或设备缺失时，系统起不来但能进 shell；
+> - **`options` 写错（如把根分区写成 `ro`）可能直接启动失败**——改之前先备份 `cp /etc/fstab /etc/fstab.bak`。
+
+### 8.4 LVM 逻辑卷
+
+LVM（Logical Volume Management，**逻辑卷管理**）解决的问题：**普通分区一旦分完就固定了，想扩容只能重分区重装**。LVM 在物理分区之上加一层抽象，把多个物理分区聚成「卷组」，再从卷组里切出「逻辑卷」——卷组内还有空闲时，逻辑卷可以随时扩大。
+
+三层结构，自下而上：
+
+| 层次 | 对象 | 命令 | 说明 |
+| --- | --- | --- | --- |
+| 物理层 | **PV**（Physical Volume，物理卷） | `pvscan` / `pvcreate` / `pvdisplay` / `pvremove` | 一个普通分区，或直接是一块整盘 |
+| 卷组层 | **VG**（Volume Group，卷组） | `vgscan` / `vgcreate` / `vgdisplay` / `vgremove` / `vgextend` | 把多个 PV 聚成一个「虚拟大硬盘」，**扩容的关键层** |
+| 逻辑层 | **LV**（Logical Volume，逻辑卷） | `lvscan` / `lvcreate` / `lvdisplay` / `lvremove` / `lvextend` | 真正被格式化、被挂载、被写入的对象 |
+
+> 设备路径形如 `/dev/vgdata/mydata`（卷组 / 逻辑卷），底层由内核的 **device mapper** 设备映射模块实现。
+
+创建卷组与逻辑卷：
+
+```bash
+[root@beta ~]# pvcreate /dev/sda2 /dev/sda3          # 1. 把分区标记为 PV
+  Physical volume "/dev/sda2" successfully created.
+  Physical volume "/dev/sda3" successfully created.
+
+[root@beta ~]# vgcreate -s 16M vgdata /dev/sda2    # 2. 建卷组，-s 指定 PE 大小
+  Volume group "vgdata" successfully created
+
+[root@beta ~]# vgdisplay vgdata
+  --- Volume group ---
+  VG Name               vgdata
+  Format                lvm2
+  VG Status             resizable          # 可扩可缩，这是 LVM 的核心价值
+  VG Size               4.98 GiB
+  PE Size               16.00 MiB
+  Total PE              319
+  Free  PE / Size       319 / 4.98 GiB
+
+[root@beta ~]# vgs
+  VG     #PV #LV #SN Attr   VSize   VFree
+  rlm      1   2   0 wz--n- <19.00g    0
+  vgdata   1   0   0 wz--n-   4.98g 4.98g
+
+[root@beta ~]# lvcreate -L1G -n mydata vgdata       # 3. 从卷组切出逻辑卷
+  Logical volume "mydata" created.
+
+[root@beta ~]# lvs
+  LV     VG     Attr       LSize   Pool Origin Data%  Meta%  Move Log Cpy%Sync Convert
+  root   rlm    -wi-ao---- <17.00g
+  swap   rlm    -wi-ao----   2.00g
+  mydata vgdata -wi-a-----   1.00g
+
+[root@beta ~]# lvdisplay /dev/vgdata/mydata
+  --- Logical volume ---
+  LV Path                /dev/vgdata/mydata
+  LV Name                mydata
+  VG Name                vgdata
+  LV Size                1.00 GiB
+  Current LE             64
+  Segments               1
+```
+
+| `lvcreate` 常用参数 | 作用 |
+| --- | --- |
+| `-L 1G` | 指定**物理**大小（固定值） |
+| `-l 100%FREE` | 占满卷组剩余空间（弹性分配常用） |
+| `-n 名字` | 逻辑卷名 |
+| `-s` | 创建快照卷 |
+
+扩容的两条路线：
+
+```bash
+# 路线 A：卷组里有空闲 PE —— 直接扩逻辑卷，不用动磁盘
+[root@beta ~]# lvextend -L +2G /dev/vgdata/mydata
+
+# 路线 B：卷组没空间了 —— 先加一块盘进卷组，再扩逻辑卷
+[root@beta ~]# pvcreate /dev/sdb1
+[root@beta ~]# vgextend vgdata /dev/sdb1
+[root@beta ~]# lvextend -L +2G /dev/vgdata/mydata
+
+# 扩完还要扩文件系统，否则 df 看还是老容量
+[root@beta ~]# xfs_growfs /db-bak      # xfs 只能扩不能缩
+```
+
+> ⚠️ **逻辑卷扩容 ≠ 文件系统扩容**：`lvextend` 只改了 LV 的边界，文件系统还停在原大小，必须再跑 `xfs_growfs`（xfs）或 `resize2fs`（ext4）。
+> xfs **只能扩不能缩**（要缩小只能重新格式化再拷数据），ext4 可扩可缩——系统盘选 xfs 时心里要有数。
+> 删除顺序与创建相反：**先 `lvremove` 再 `vgremove` 最后 `pvremove`**，反了会提示卷组 / 物理卷仍在使用中。
+
+### 8.5 分区工具小结
+
+| 命令 | 用法 | 适用 |
+| --- | --- | --- |
+| `lsblk` | 看块设备与挂载关系（只读，安全） | 日常排查 |
+| `fdisk` | MBR / GPT 都支持，含写操作 | 少量分区、需精细指定扇区 |
+| `gdisk` | GPT 专用菜单，等价于 `fdisk -g` | 想显式用 GPT |
+| `parted` | 支持 2TB 以上分区、百分比分配 | 大容量 / 脚本化 |
+| `mkfs.xfs` / `mkfs.ext4` | 建文件系统（**会清空数据**） | 格式化新分区 |
+| `blkid` / `lsblk -f` | 查看 UUID、文件系统类型 | 写 fstab 前确认 |
 
 ## 九、运行级别
 
@@ -1618,25 +1913,7 @@ init [0123456]       # 切换不同运行级别
 
 > 单用户模式下可以找回丢失的 root 密码：重启进入运行级别 1，直接用 `passwd` 修改密码（需在物理机/控制台操作）。
 
----
-
-## 十、帮助命令
-
-### man
-
-```bash
-man ls        # 获得命令或配置文件的帮助信息
-```
-
-### help
-
-```bash
-help cd       # 获得 shell 内置命令的帮助信息
-```
-
----
-
-## 十一、进阶专题：退出登录后，下载任务为什么会停
+## 十、进阶专题：退出登录后，下载任务为什么会停
 
 > 适用范围：SSH 远程登录、本地终端、`su`/`sudo` 切换的会话。
 > 关键词：SIGHUP、会话（session）、进程组、systemd-logind、断点续传。

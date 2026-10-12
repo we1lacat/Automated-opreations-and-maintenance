@@ -1814,7 +1814,7 @@ LVM（Logical Volume Management，**逻辑卷管理**）解决的问题：**普�
 
 > 设备路径形如 `/dev/vgdata/mydata`（卷组 / 逻辑卷），底层由内核的 **device mapper** 设备映射模块实现。
 
-创建卷组与逻辑卷：
+#### 创建卷组与逻辑卷：
 
 ```bash
 [root@beta ~]# pvcreate /dev/sda2 /dev/sda3          # 1. 把分区标记为 PV
@@ -1865,7 +1865,202 @@ LVM（Logical Volume Management，**逻辑卷管理**）解决的问题：**普�
 | `-n 名字` | 逻辑卷名 |
 | `-s` | 创建快照卷 |
 
-扩容的两条路线：
+#### 扩容LV/VG
+
+```
+#有空余则直接添加
+#lvextend -r -L +1G /dev/vgdata/lvweb 一条快速扩容LV，-r 自动扩 FS
+
+[root@beta ~]# lvextend -L +1G /dev/vgdata/lvapp 
+  Size of logical volume vgdata/lvapp changed from 3.98 GiB (255 extents) to 4.98 GiB (319 extents).
+  Logical volume vgdata/lvapp successfully resized.
+  
+[root@beta ~]# xfs_growfs /web/
+
+[root@beta ~]# df -h /web/
+Filesystem                Size  Used Avail Use% Mounted on
+/dev/mapper/vgdata-lvapp  5.0G   68M  4.9G   2% /web
+[root@beta ~]# vgs
+  VG     #PV #LV #SN Attr   VSize   VFree
+  rlm      1   2   0 wz--n- <19.00g    0 
+  vgdata   2   2   0 wz--n-  <9.97g 3.98g
+  
+[root@beta ~]# lvextend -r -L +1G /dev/vgdata/lvapp 
+
+[root@beta ~]# vgs
+  VG     #PV #LV #SN Attr   VSize   VFree
+  rlm      1   2   0 wz--n- <19.00g    0 
+  vgdata   2   2   0 wz--n-  <9.97g 2.98g
+```
+
+##### 无空余扩容PV
+
+```
+[root@beta ~]# vgs
+  VG     #PV #LV #SN Attr   VSize   VFree
+  rlm      1   2   0 wz--n- <19.00g    0 
+  vgdata   2   2   0 wz--n-  <9.97g 2.98g
+[root@beta ~]# lvextend -r -l +100%FREE /dev/vgdata/lvapp 
+#用以上使用所有vg
+
+[root@beta ~]# vgs
+  VG     #PV #LV #SN Attr   VSize   VFree
+  rlm      1   2   0 wz--n- <19.00g    0 
+  vgdata   2   2   0 wz--n-  <9.97g    0 
+[root@beta ~]# pvcreate /dev/sda4
+  Physical volume "/dev/sda4" successfully created.
+
+[root@beta ~]# vgextend vgdata /dev/sda4
+  Volume group "vgdata" successfully extended
+[root@beta ~]# vgs
+  VG     #PV #LV #SN Attr   VSize   VFree
+  rlm      1   2   0 wz--n- <19.00g    0 
+  vgdata   3   2   0 wz--n-  16.95g 6.98g
+
+[root@beta ~]# lvextend  -r -l +100%FREE /dev/vgdata/lvapp 
+  ...
+  Logical volume vgdata/lvapp successfully resized.
+  
+[root@beta ~]# vgs
+  VG     #PV #LV #SN Attr   VSize   VFree
+  rlm      1   2   0 wz--n- <19.00g    0 
+  vgdata   3   2   0 wz--n-  16.95g    0 
+```
+
+#### 缩容
+
+```
+[root@beta ~]# mkfs.ext4 -L mydata /dev/vgdata/mydata 
+
+
+[root@beta ~]# mkdir -p /mnt/mydata && mount /dev/vgdata//mydata /mnt/mydata
+[root@beta ~]# dd if=/dev/zero of=/mnt/mydata/fillter bs=1M count=300 status=progress
+
+[root@beta ~]# umount /mnt/mydata
+
+[root@beta ~]# e2fsck -f /dev/vgdata/mydata #必做，漏了后续resize2fs 直接拒执行
+e2fsck 1.46.5 (30-Dec-2021)
+Pass 1: Checking inodes, blocks, and sizes
+Pass 2: Checking directory structure
+Pass 3: Checking directory connectivity
+Pass 4: Checking reference counts
+Pass 5: Checking group summary information
+mydata: 12/65536 files (0.0% non-contiguous), 89755/262144 blocks
+
+[root@beta ~]# resize2fs /dev/vgdata/mydata 500M
+resize2fs 1.46.5 (30-Dec-2021)
+Resizing the filesystem on /dev/vgdata/mydata to 128000 (4k) blocks.
+The filesystem on /dev/vgdata/mydata is now 128000 (4k) blocks long.
+
+[root@beta ~]# lvreduce -L 500M /dev/vgdata/mydata 
+  Rounding size to boundary between physical extents: 512.00 MiB.
+  ...
+  Logical volume vgdata/mydata successfully resized.
+[root@beta ~]# mount /dev/vgdata/mydata /mnt/mydata/
+
+[root@beta ~]# vgs -o vg_name,vg_free
+  VG     VFree  
+  rlm         0 
+  vgdata 512.00m
+[root@beta ~]# df -h /mnt/mydata 
+Filesystem                 Size  Used Avail Use% Mounted on
+/dev/mapper/vgdata-mydata  459M  301M  124M  71% /mnt/mydata
+
+[root@beta ~]# ls -l /mnt/mydata/fillter 
+-rw-r--r--. 1 root root 314572800 Oct 12 16:22 /mnt/mydata/fillter
+```
+
+> 缩容先FS->LV,扩容先LV->FS
+>
+> `lvreduce -r` 能自动调 FS，但**生产环境别用**，手动四步才安全。
+
+#### SWAP逻辑卷
+
+```
+[root@beta ~]# lvcreate -L 512M -n lvswap vgdata
+  Logical volume "lvswap" created.
+
+[root@beta ~]# mkswap /dev/vgdata/lvswap 
+Setting up swapspace version 1, size = 512 MiB (536866816 bytes)
+no label, UUID=8fd0976b-f0ae-481e-b743-913c29612af7
+[root@beta ~]# vi /etc/fstab #在配置文件添加
+
+[root@beta ~]# swapon -a #打开swap分区
+[root@beta ~]# swapon --show
+NAME      TYPE      SIZE USED PRIO
+/dev/dm-1 partition   2G   0B   -2
+/dev/dm-4 partition 512M   0B   -3
+```
+
+
+
+#### 缩减 VG / 迁移 PV
+
+> 缩减/移除 PV 前必须先迁走其上的数据：`pvmove` 把待移除 PV 的数据迁到同 VG 的其他 PV（目标 PV 须有空闲空间），迁完再 `vgreduce` 踢出、`pvremove` 释放。
+
+```bash
+pvmove /dev/sda3                  # 把 sda3 上的数据迁到同 VG 其他 PV
+vgreduce vgdata /dev/sda3         # 从 VG 移除该 PV
+pvremove /dev/sda3                # 释放 PV，分区退回纯分区态
+```
+
+> 若 VG 已无空闲 PE，`pvmove` 报 `No extents available` 是死局——需先 `vgextend` 加盘（见上方「扩容 LV/VG」），或接受该 PV 无法腾出。
+
+#### 重命名 VG / LV（vgrename / lvrename）
+
+> 改名后 fstab 不会自动跟随，这是最易扣分处。
+
+```bash
+vgrename vgdata vg_new              # 重命名卷组
+lvrename /dev/vg_new/lvapp lv_web   # 重命名逻辑卷（等价：lvrename vg_new lvapp lv_web）
+```
+
+> 改名后**必须同步 fstab**（改 fstab 走下方「⚠️ 事故复盘」的安全写法，禁止 /tmp+mv）：
+
+```bash
+sed -i 's#/dev/vgdata/#/dev/vg_new/#' /etc/fstab
+restorecon -v /etc/fstab            # 兜底，防止 SELinux 标签被改坏
+mount -a                            # 验一遍，确认无悬空设备
+```
+
+#### 快照（备份/回滚）
+
+> LVM 快照基于 COW（写时复制）：只记录原 LV 此后被改动的数据块，不立即占满空间。适合做时间点备份 / 升级前兜底。
+
+```bash
+# 为 /dev/vgdata/lvapp 建 1G 快照 lvapp_snap
+lvcreate -L 1G -s -n lvapp_snap /dev/vgdata/lvapp
+
+lvs                                  # 快照 Attr 含 s，origin 列指向原 LV
+mkdir -p /mnt/snap
+mount /dev/vgdata/lvapp_snap /mnt/snap   # 挂载快照 → 读到快照时刻的数据
+
+# 回滚方式 ①：把快照内容拷回原 LV（拷回前先卸载快照、挂好原 LV）
+umount /mnt/snap
+cp -a /mnt/snap/* /web/
+
+# 回滚方式 ②：lvconvert --merge 就地合并（合并后快照自动消失）
+lvconvert --merge /dev/vgdata/lvapp_snap
+
+# 删除不再需要的快照
+umount /mnt/snap
+lvremove /dev/vgdata/lvapp_snap
+```
+
+> 快照**不是**永久备份：原 LV 持续写入、改动块累积超过快照容量，快照会失效（`Invalidated`）。容量给原 LV 的 10%~20% 起；生产环境别长期挂着。
+
+#### 反向清理（删除 LV / VG / PV）
+
+> 创建顺序 PV→VG→LV，删除反过来 LV→VG→PV。删 LV 前**必须已卸载**，否则 `Logical volume ... is in use`。
+
+```bash
+umount /web /mnt/mydata                  # ① 先卸载（是 umount，不是 unmount！）
+lvremove /dev/vg_new/lv_web /dev/vg_new/mydata   # ② 删 LV，可一次传多个；加 -y 免确认
+vgremove vg_new                          # ③ 删 VG（跳过则保留 VG 重头再练）
+pvremove /dev/sda2 /dev/sda3 /dev/sda4   # ④ 释放 PV，分区退回纯分区态，可重新 pvcreate
+```
+
+#### 扩容路线速查（卷组有空 VS 卷组满）
 
 ```bash
 # 路线 A：卷组里有空闲 PE —— 直接扩逻辑卷，不用动磁盘
@@ -1880,9 +2075,51 @@ LVM（Logical Volume Management，**逻辑卷管理**）解决的问题：**普�
 [root@beta ~]# xfs_growfs /db-bak      # xfs 只能扩不能缩
 ```
 
+
+
+
+
+
+
 > ⚠️ **逻辑卷扩容 ≠ 文件系统扩容**：`lvextend` 只改了 LV 的边界，文件系统还停在原大小，必须再跑 `xfs_growfs`（xfs）或 `resize2fs`（ext4）。
 > xfs **只能扩不能缩**（要缩小只能重新格式化再拷数据），ext4 可扩可缩——系统盘选 xfs 时心里要有数。
 > 删除顺序与创建相反：**先 `lvremove` 再 `vgremove` 最后 `pvremove`**，反了会提示卷组 / 物理卷仍在使用中。
+
+#### ⚠️ 事故复盘：改 /etc/fstab 污染 SELinux 标签 → 开机根分区只读
+
+> 亲历案例，排查花了很久，代价不小，**务必记住这条铁律**。
+
+**现象**：改完 fstab 重启后，根分区停在 `ro`，auditd / kdump / dbus / NetworkManager 连锁起不来，网卡 DOWN。控制台下 root 怎么看文件都正常，但开机却读不了 fstab。
+
+**根因**：往 `/etc/fstab` 写内容时用了 `/tmp` 中转 + `mv`：
+```bash
+grep -vE 'vgdata' /etc/fstab > /tmp/fstab.new   # /tmp 下生成的文件带 user_tmp_t 标签
+echo '...' >> /tmp/fstab.new
+mv /tmp/fstab.new /etc/fstab                     # mv 保留源文件标签 → /etc/fstab 变成 user_tmp_t
+```
+开机时 `systemd-fstab-generator`（受限域）读到带 `user_tmp_t` 标签的 `/etc/fstab` 被 SELinux **拒绝** → `systemd-remount-fs` 失败 → 根停留 `ro` → 全家桶挂掉。root 控制台是 `unconfined_t` 不受限，所以表面看不出异常——**只有 `ls -Z` 能现形**：
+```bash
+ls -Z /etc/fstab
+# 异常：unconfined_u:object_r:user_tmp_t:s0        （正常应为 etc_runtime_t:s0 或 etc_t:s0）
+```
+
+**修复**：
+```bash
+restorecon -v /etc/fstab            # 一条命令把标签改回合法类型，重启即恢复
+```
+
+**铁律（以后写系统目录文件）**：
+- **禁止 `/tmp` 中转 + `mv` 到 /etc 等系统目录**。要么原地改（`sed -i`），要么 `>>` 追加，要么改完补 `restorecon`。
+- 改完 fstab 务必 `mount -a` 验一遍；怕标签问题就在脚本末尾统一 `restorecon -v /etc/fstab`。
+
+#### ⚠️ 易错点补充
+
+| 易错点 | 正确做法 |
+| --- | --- |
+| `unmount` 命令不存在 | 卸载是 `umount`（少一个 n） |
+| 二级挂载点的 systemd 单元名 | `/mnt/mydata` 的单元名是 `mnt-mydata.mount`（路径化转义），不是 `mydata.mount`；查状态用 `systemctl is-active mnt-mydata.mount` |
+| 改 fstab 后不生效 | 改完 `mount -a` 验；systemd 仍认旧配置就 `systemctl daemon-reload` |
+| 根分区被写成 `ro` | 检查 fstab 根那行 `options`，误写 `ro` 改回 `defaults`；若是 SELinux 拦截，见上方「⚠️ 事故复盘」 |
 
 ### 8.5 分区工具小结
 

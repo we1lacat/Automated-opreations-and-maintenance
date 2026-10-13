@@ -29,7 +29,9 @@ Log system/      日志与可观测
 
 | 文件 | 规模 | 覆盖内容 |
 |------|------|---------|
-| [`Linux-note.md`](Linux/Linux-note.md) | 2133 行 | 一切皆文件、目录结构、文件与目录操作（含 `ls` 长格式逐列详解）、Vim、开关机与登录注销、用户数据文件（`/etc/passwd`·`/etc/shadow`·`/etc/default/useradd`）与用户·组管理、**权限管理**（chmod / chown、属主属组、数字与符号模式、umask、setuid·setgid·sticky、批量修复目录权限）、**文本三剑客**（grep / sed / awk、正则 BRE 与 ERE、管道符与重定向）、find 查找与 `-exec`、**文件系统与磁盘**（tar / gzip·bzip2·xz、`/dev` 设备名、lsblk、MBR 与 GPT、fdisk 实操、xfs / ext4、mount·umount、`/etc/fstab` 持久化、LVM 逻辑卷 PV·VG·LV 与扩容）、运行级别、帮助命令；进阶专题：退出登录后任务中断的原因与解法（nohup / setsid / tmux / screen / systemd user） |
+| [`Linux-note.md`](Linux/Linux-note.md) | 2752 行 | 一切皆文件、目录结构、文件与目录操作（含 `ls` 长格式详解）、Vim、开关机与登录注销、用户数据文件与用户·组管理 + sudo、**权限管理**（chmod / chown、属主属组、数字与符号模式、umask、setuid·setgid·sticky、**ACL**、**SELinux 基础**、批量修复）、**文本三剑客**（grep / sed / awk、正则 BRE 与 ERE、管道符）、find 查找、**文件系统与磁盘**（tar / gzip·bzip2·xz、`/dev` 设备名、lsblk、MBR 与 GPT、fdisk 实操、xfs / ext4、mount·umount、`/etc/fstab`、autofs、LVM PV·VG·LV 与扩容）、运行级别、**进程与服务管理**（top / ps / pstree / 前后台调度 / 信号 / nice·renice / systemctl / ss / journalctl）、**软件包管理**（RPM 查询、yum / dnf 与本地源、源码编译、Flatpak、cron / at 计划任务）、**网络与安全**（firewalld、SSH 密钥、时间同步）；进阶专题：退出登录后任务中断的原因与解法 |
+| [`Linux-note-fixlog.md`](Linux/Linux-note-fixlog.md) | — | 两次结构性问题处理复盘：问题清单 / 根因 / 处理方式 + 踩坑沉淀 + 后续维护检查清单 |
+| [`troubleshooting.md`](Linux/troubleshooting.md) | 397 行 | **Linux 排障手册**（按症状反查）：权限与属主、文件与目录操作、文本三剑客、磁盘 / 挂载 / LVM（含 `/etc/fstab` 污染 SELinux 标签导致开机根分区只读的完整事故复盘）、进程服务与日志、防火墙与网络、登录会话与长任务、用户与密码 |
 | [`shell-note-zh.md`](Linux/shell-note-zh.md) | 870 行 | Shell 编程中文版：shebang、Bash 特性、父 shell 与子 shell 执行环境、变量、字符串操作、命令、脚本开发（函数 / 运算 / 条件 / 循环） |
 | [`shell.md`](Linux/shell.md) | 842 行 | 英文原稿，章节一一对应；保留英文是想练原版术语的可以直接读 |
 | [`docker-note.md`](container/docker-note.md) | 2462 行 | 安装、Docker 结构与镜像原理、常用命令、容器卷、Dockerfile（含分层缓存与构建实战）、Docker 网络（docker0 / veth pair / 自定义网络）、Compose、Swarm 集群与 stack/secret |

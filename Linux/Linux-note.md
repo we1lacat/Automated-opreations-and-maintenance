@@ -110,7 +110,7 @@ cd ..              # 回到上级目录
 cd ../../root      # 从 nono 回到 root（多级向上）
 ```
 
-##### 相对路径和绝对路径
+#### 相对路径和绝对路径
 
 ```bash
 [king@node2 ~]$ cd /home/king/apple/futa/badend/
@@ -403,18 +403,6 @@ drwx------ 5 monitor monitor 4.0K 9月  20 20:08 ..
 ```
 
 > 三处值得留意：① `stuscore` 是编译产物，权限带 `x`，可直接 `./stuscore` 执行；`stuscore.c` 是源码，没有 `x`。② `.` 和 `..` 的权限分别是 `drwxr-xr-x` 和 `drwx------`，**目录的 `x` 决定别人能不能进去、`w` 决定能不能在里面增删文件**（详见第七章）。③ 这一天文件属主全是 `root`，普通用户 `monitor` 改不动——属主问题的处理也见第七章。
-
-`ls` 用错类型的坑：
-
-```text
-$ ls -lR ./makefile
--rw-r--r-- 1 monitor monitor 93 Sep 17 14:30 ./makefile
-
-$ cd ./makefile
--bash: cd: ./makefile: Not a directory
-```
-
-> `makefile` 是个**普通文件**（首字符是 `-`），不是目录，所以 `cd` 进去会报 `Not a directory`。看一眼 `ls -l` 的第一个字符就能提前避免，不用等报错——`ls -lR` 之所以能列出它，是因为 `-R` 只对目录递归，对文件就是正常列出。
 
 #### echo
 
@@ -869,7 +857,6 @@ awk 'NR==2,NR==5{print NR $0}' dir.txt      # 带行号打印第 2~5 行
 awk '{print $1,$(NF-1),$(NF-2)}' dir.txt    # 靠 NF 反向取列：末列、倒数第二、倒数第三
 ```
 
-> **`print $1 $3` 与 `print $1,$3` 的区别是 awk 的第一号坑**：逗号会被替换成 `OFS`（默认空格），**不写逗号就是直接拼接**——两列内容会连成一坨，看起来像数据错乱。
 > **`$(NF-1)` 这种「用 NF 反向定位」的写法**在处理列数不固定的文本时极其实用（尤其 `ls -la`）：最后一列是文件名、倒数第三列是大小，不用数第几列。
 
 **awk 统计**：
@@ -919,7 +906,6 @@ printf 的格式化输出方法（**类比 C 语言，很好理解**）：
 | `%5d` | 整数右对齐、宽度 5 | `  169` |
 
 > **`printf` 忘了写 `\n` 最经典**：所有输出会挤成一整行，看着像命令没生效。
-> 注意：**`print` 里的逗号是「字段分隔符」**（会被转成 `OFS`），**`printf` 里的逗号是「参数分隔符」**——两者含义不同，混用会输出一堆莫名其妙的拼接结果。
 
 ---
 
@@ -1211,6 +1197,31 @@ ea:x:1004:
 
 > `gpasswd -a` 加的是**附加组**，改主组用 `usermod -g`。一个用户可以有多个附加组，主组只能有一个。
 
+### 6.4 sudo：受控提权
+
+普通用户临时以 root（或其他用户）身份执行命令，且**所有操作留痕**。
+
+```bash
+visudo                        # 编辑 /etc/sudoers（带语法检查，别直接 vi）
+```
+
+```
+# /etc/sudoers 常用格式
+root    ALL=(ALL)       ALL            # 用户  主机=(可扮演的角色)  命令
+%wheel  ALL=(ALL)       ALL            # % 开头表示用户组
+king    ALL=(ALL)       NOPASSWD: /usr/bin/systemctl restart nginx
+```
+
+| 命令 | 作用 |
+| --- | --- |
+| `sudo -l` | 列出当前用户被允许执行的命令 |
+| `sudo -u king cmd` | 以指定用户身份执行 |
+| `sudo !!` | 以 root 重跑上一条命令（忘写 sudo 时最顺手） |
+
+> 提权用 sudo 而不是直接给 root 密码，好处是**可审计、可回收**（删一行授权即可）。`sudo su -` 是常见但不推荐的做法，会丢失原始用户信息。
+
+---
+
 ## 七、权限管理（chmod / chown）
 
 > `chmod` = **ch**ange **mod**e，修改文件或目录的权限。只有**文件属主**或 **root** 能改，普通用户**不能靠它提权**。
@@ -1443,14 +1454,14 @@ ls -la
 
 ### 7.8 避坑清单
 
-| 坑                           | 说明                                                         |
+| 坑 | 说明 |
 | --- | --- |
-| `chmod -R 777 /`             | ⚠️ **绝对不能执行**。整个系统权限全开、安全归零，且没有一次性回滚的办法。 |
-| 报 `Operation not permitted` | 你不是文件属主、也不是 root。**`chmod` 不能提权**，只能由管理员用 `sudo` / `chown` / `setfacl` 处理。 |
-| 改了权限还是不能写           | 先看属主对不对（`ls -l` 第三列）；属主不对就先 `chown`。     |
-| 给目录加了 `w` 仍进不去      | 目录缺 `x`，补上（`chmod u+rwx dir`）。                      |
-| `cp` 过来属主变了            | `cp` 默认把属主设成**当前操作用户**；要保留权限与时间戳加 `-p`，属主本身仍需 root 才能改。 |
-| 图省事用 `-R 777`            | 反面教材。该改的是属主与属组，不是把门全打开。               |
+| `chmod -R 777 /` | ⚠️ **绝对不能执行**。系统权限全开、安全归零，且没有一次性回滚的办法。 |
+| 报 `Operation not permitted` | 你不是文件属主、也不是 root。**`chmod` 不能提权**，只能由管理员用 `sudo` / `chown` 处理。 |
+| 改了权限还是不能写 | 先看属主对不对（`ls -l` 第三列）；**属主不对先 `chown`**。 |
+| 给目录加了 `w` 仍进不去 | 目录缺 `x`，补上（`chmod u+rwx dir`）。 |
+
+> 更多权限类排障（`cp` 属主变化、批量修复目录树等）见 [`troubleshooting.md`](troubleshooting.md) 第一章。
 
 ### 7.9 小结
 
@@ -1464,6 +1475,57 @@ ls -la
 4. 目录必须有 `x` 才能进得去、才能访问里面的文件；
 5. 常用档位：普通文件 `644`、私密文件 `600`、目录与可执行 `755`、私有目录 `700`；
 6. **`chmod -R 777` 是红线**；批量整目录用「目录 755 + 文件 644 + 单独补 `x`」三步走。
+
+---
+
+### 7.10 ACL：更细的权限
+
+`chmod` 的三段式只能管「属主 / 属组 / 其他人」，**要给单个用户单独授权就得用 ACL**。
+
+```bash
+setfacl -m u:king:rwx /data/share     # 给用户 king 单独授 rwx
+setfacl -m g:dev:rx  /data/share      # 给组 dev 授 r-x
+setfacl -x u:king     /data/share     # 撤销某条 ACL
+getfacl /data/share                   # 查看当前 ACL
+```
+
+| 命令 | 作用 |
+| --- | --- |
+| `getfacl 文件` | 查看 ACL |
+| `setfacl -m u:用户:权限 文件` | **m**=modify，新增 / 修改一条 |
+| `setfacl -x u:用户 文件` | **x**=删除一条 |
+| `setfacl -b 文件` | 清空所有 ACL |
+
+> `ls -l` 里权限串末尾出现 `+`（如 `drwxrwx---+`）就说明该文件有 ACL。**ACL 权限优先于普通权限位**——这条常考。
+
+### 7.11 SELinux 基础
+
+RHEL 系默认强制的强制访问控制（MAC）层。**进程能碰什么文件，不只看权限，还要看 SELinux 上下文是否匹配**——这也是 §8.4 那次 fstab 事故的根因。
+
+```bash
+getenforce                       # 查看当前模式
+setenforce 0                     # 临时切到 permissive（重启失效）
+sestatus                         # 模式 + 上下文总览
+ls -Z /etc/fstab                 # 看文件的安全上下文
+restorecon -v /etc/fstab         # 恢复默认标签
+```
+
+| 模式 | 行为 |
+| --- | --- |
+| `enforcing` | **强制**：违规直接拒绝（生产默认） |
+| `permissive` | 只记录不阻止（排查期用） |
+| `disabled` | 完全关闭（重启后才生效，不推荐） |
+
+上下文的四段格式：`用户:角色:类型:级别`（如 `system_u:object_r:etc_t:s0`），**排障时只看第三段「类型」**。
+
+```bash
+aureport --avc                   # 查看被拒绝的记录
+ausearch -m avc -ts recent       # 查最近的 avc 拒绝
+setsebool -P httpd_can_network_connect on   # 设置布尔值并持久化
+semanage port -a -t http_port_t -p tcp 8080 # 放行非标准端口
+```
+
+> **不要第一反应就 `setenforce 0`**——那是掩盖问题。先用 `ausearch` 确认是 SELinux 拒绝，再用 `restorecon` / `setsebool` / `semanage` 对症处理。
 
 ---
 
@@ -1759,8 +1821,7 @@ umount /db-bak/          # 卸载挂载点，不是设备名
 df -h                    # 确认挂载点那一行已消失
 ```
 
-> 报 `target is busy` 说明还有进程在用这个目录（`lsof +D /db-bak/` 或 `fuser -vm /db-bak/` 查），先退出该目录 / 停掉进程再卸载。
-> 正在被写入时强行卸载容易丢数据，**卸载前先 `sync`**。
+> 报 `target is busy` 就先 `cd /` 退出目标目录再卸；正在写入时强行卸载容易丢数据，先 `sync`。详细排查见 [`troubleshooting.md`](troubleshooting.md)。
 
 #### /etc/fstab：开机自动挂载（挂载持久化）
 
@@ -1893,7 +1954,7 @@ Filesystem                Size  Used Avail Use% Mounted on
   vgdata   2   2   0 wz--n-  <9.97g 2.98g
 ```
 
-##### 无空余扩容PV
+#### 无空余扩容PV
 
 ```
 [root@beta ~]# vgs
@@ -1992,8 +2053,6 @@ NAME      TYPE      SIZE USED PRIO
 /dev/dm-4 partition 512M   0B   -3
 ```
 
-
-
 #### 缩减 VG / 迁移 PV
 
 > 缩减/移除 PV 前必须先迁走其上的数据：`pvmove` 把待移除 PV 的数据迁到同 VG 的其他 PV（目标 PV 须有空闲空间），迁完再 `vgreduce` 踢出、`pvremove` 释放。
@@ -2015,7 +2074,7 @@ vgrename vgdata vg_new              # 重命名卷组
 lvrename /dev/vg_new/lvapp lv_web   # 重命名逻辑卷（等价：lvrename vg_new lvapp lv_web）
 ```
 
-> 改名后**必须同步 fstab**（改 fstab 走下方「⚠️ 事故复盘」的安全写法，禁止 /tmp+mv）：
+> 改名后**必须同步 fstab**（改 fstab 的安全写法见下方铁律与 [`troubleshooting.md`](troubleshooting.md) 第四章，禁止 /tmp+mv）：
 
 ```bash
 sed -i 's#/dev/vgdata/#/dev/vg_new/#' /etc/fstab
@@ -2075,51 +2134,11 @@ pvremove /dev/sda2 /dev/sda3 /dev/sda4   # ④ 释放 PV，分区退回纯分区
 [root@beta ~]# xfs_growfs /db-bak      # xfs 只能扩不能缩
 ```
 
-
-
-
-
-
-
-> ⚠️ **逻辑卷扩容 ≠ 文件系统扩容**：`lvextend` 只改了 LV 的边界，文件系统还停在原大小，必须再跑 `xfs_growfs`（xfs）或 `resize2fs`（ext4）。
+> **逻辑卷扩容 ≠ 文件系统扩容**：`lvextend` 只改了 LV 的边界，文件系统还停在原大小，必须再跑 `xfs_growfs`（xfs）或 `resize2fs`（ext4）。
 > xfs **只能扩不能缩**（要缩小只能重新格式化再拷数据），ext4 可扩可缩——系统盘选 xfs 时心里要有数。
 > 删除顺序与创建相反：**先 `lvremove` 再 `vgremove` 最后 `pvremove`**，反了会提示卷组 / 物理卷仍在使用中。
 
-#### ⚠️ 事故复盘：改 /etc/fstab 污染 SELinux 标签 → 开机根分区只读
-
-> 亲历案例，排查花了很久，代价不小，**务必记住这条铁律**。
-
-**现象**：改完 fstab 重启后，根分区停在 `ro`，auditd / kdump / dbus / NetworkManager 连锁起不来，网卡 DOWN。控制台下 root 怎么看文件都正常，但开机却读不了 fstab。
-
-**根因**：往 `/etc/fstab` 写内容时用了 `/tmp` 中转 + `mv`：
-```bash
-grep -vE 'vgdata' /etc/fstab > /tmp/fstab.new   # /tmp 下生成的文件带 user_tmp_t 标签
-echo '...' >> /tmp/fstab.new
-mv /tmp/fstab.new /etc/fstab                     # mv 保留源文件标签 → /etc/fstab 变成 user_tmp_t
-```
-开机时 `systemd-fstab-generator`（受限域）读到带 `user_tmp_t` 标签的 `/etc/fstab` 被 SELinux **拒绝** → `systemd-remount-fs` 失败 → 根停留 `ro` → 全家桶挂掉。root 控制台是 `unconfined_t` 不受限，所以表面看不出异常——**只有 `ls -Z` 能现形**：
-```bash
-ls -Z /etc/fstab
-# 异常：unconfined_u:object_r:user_tmp_t:s0        （正常应为 etc_runtime_t:s0 或 etc_t:s0）
-```
-
-**修复**：
-```bash
-restorecon -v /etc/fstab            # 一条命令把标签改回合法类型，重启即恢复
-```
-
-**铁律（以后写系统目录文件）**：
-- **禁止 `/tmp` 中转 + `mv` 到 /etc 等系统目录**。要么原地改（`sed -i`），要么 `>>` 追加，要么改完补 `restorecon`。
-- 改完 fstab 务必 `mount -a` 验一遍；怕标签问题就在脚本末尾统一 `restorecon -v /etc/fstab`。
-
-#### ⚠️ 易错点补充
-
-| 易错点 | 正确做法 |
-| --- | --- |
-| `unmount` 命令不存在 | 卸载是 `umount`（少一个 n） |
-| 二级挂载点的 systemd 单元名 | `/mnt/mydata` 的单元名是 `mnt-mydata.mount`（路径化转义），不是 `mydata.mount`；查状态用 `systemctl is-active mnt-mydata.mount` |
-| 改 fstab 后不生效 | 改完 `mount -a` 验；systemd 仍认旧配置就 `systemctl daemon-reload` |
-| 根分区被写成 `ro` | 检查 fstab 根那行 `options`，误写 `ro` 改回 `defaults`；若是 SELinux 拦截，见上方「⚠️ 事故复盘」 |
+> ⚠️ **写系统目录文件的铁律**：禁止 `/tmp` 中转 + `mv` 到 `/etc` 等系统目录（`mv` 会保留 `/tmp` 的 SELinux 标签，导致开机时 fstab 被 SELinux 拒绝、根分区只读）。要么 `sed -i` 原地改，要么 `>>` 追加，要么改完补 `restorecon -v /etc/fstab`。完整事故复盘见 [`troubleshooting.md`](troubleshooting.md) 第四章。
 
 ### 8.5 分区工具小结
 
@@ -2131,6 +2150,33 @@ restorecon -v /etc/fstab            # 一条命令把标签改回合法类型，
 | `parted` | 支持 2TB 以上分区、百分比分配 | 大容量 / 脚本化 |
 | `mkfs.xfs` / `mkfs.ext4` | 建文件系统（**会清空数据**） | 格式化新分区 |
 | `blkid` / `lsblk -f` | 查看 UUID、文件系统类型 | 写 fstab 前确认 |
+
+### 8.6 autofs：按需自动挂载
+
+fstab 的问题是开机就要挂上，NFS 一挂十几个会让开机变慢，源不在时还会卡启动。autofs 的思路是**用到才挂、不用自动卸载**。
+
+```bash
+yum install autofs
+systemctl enable --now autofs
+```
+
+`/etc/auto.master` 定义监控点，`/etc/auto.nfs` 定义具体挂载：
+
+```
+# /etc/auto.master
+/nfs   /etc/auto.nfs
+
+# /etc/auto.nfs
+data   -rw,soft  10.10.0.2:/nfs/data
+```
+
+```bash
+ls /nfs/data        # 访问时才真正触发挂载
+```
+
+> 适合 NFS / 偶尔用的共享存储；本地固定盘还是写 fstab 更直观。
+
+---
 
 ## 九、运行级别
 
@@ -2148,14 +2194,372 @@ restorecon -v /etc/fstab            # 一条命令把标签改回合法类型，
 init [0123456]       # 切换不同运行级别
 ```
 
-> 单用户模式下可以找回丢失的 root 密码：重启进入运行级别 1，直接用 `passwd` 修改密码（需在物理机/控制台操作）。
+> 单用户模式下可以找回丢失的 root 密码：重启进入运行级别 1，直接用 `passwd` 修改密码（需在物理机 / 控制台操作）。
 
-## 十、进阶专题：退出登录后，下载任务为什么会停
+## 十、进程与服务管理
+
+> 对应 RHCSA「Operate running systems」：识别资源消耗进程、调整调度优先级、用信号控制进程、定位系统日志。
+
+### 10.1 程序、进程、线程
+
+| 概念 | 定义 |
+| --- | --- |
+| **程序** | 写在磁盘上的代码与数据的集合，静态占用存储空间 |
+| **进程** | 运行中的程序，占用内存，有独立的地址空间与生命周期，是系统资源分配的基本单位 |
+| **线程** | 轻量级进程，进程的实际执行单位；一个进程可并发多个线程，**线程之间共享内存空间** |
+
+### 10.2 查看进程
+
+#### top：实时进程
+
+```bash
+[root@beta ~]# top
+top - 12:54:25 up 1 min,  1 user,  load average: 0.73, 0.41, 0.16
+Tasks: 169 total,   1 running, 168 sleeping,   0 stopped,   0 zombie
+%Cpu(s):  0.0 us,  0.0 sy,  0.0 ni,100.0 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st
+MiB Mem :   3623.0 total,   3124.8 free,    510.0 used,    218.3 buff/cache
+MiB Swap:   2048.0 total,   2048.0 free,      0.0 used.   3112.9 avail Mem 
+
+    PID USER      PR  NI  VIRT    RES    SHR S  %CPU  %MEM     TIME+ COMMAND  
+```
+
+| top 里的列 | 含义 |
+| --- | --- |
+| `PR` / `NI` | 优先级 / nice 值（**NI 越小优先级越高**，root 可设负值） |
+| `VIRT` / `RES` / `SHR` | 虚拟内存 / 实际物理内存 / 共享内存 |
+| `%CPU` / `%MEM` | CPU 与内存占用率，**按 P 可降序排 CPU、按 M 排内存** |
+| `S` | 状态：`R` 运行、`S` 睡眠、`D` 不可中断睡眠、`Z` 僵尸、`T` 停止 |
+
+#### pstree：进程树
+
+```bash
+# -p 显示 pid
+# -a 显示完整命令行
+# -u 列出进程所属账号
+[root@beta ~]# pstree
+systemd─┬─NetworkManager───2*[{NetworkManager}]
+        ├─agetty
+        ├─anacron
+        ├─auditd───{auditd}
+        ├─chronyd
+        ├─crond
+        ├─dbus-broker-lau───dbus-broker
+        ├─firewalld───{firewalld}
+        ├─irqbalance───{irqbalance}
+        ├─rsyslogd───2*[{rsyslogd}]
+        ├─sshd───sshd-session───sshd-session─┬─bash───pstree
+        │                                    └─sftp-server
+        ├─systemd───(sd-pam)
+        ├─systemd-journal
+        ├─systemd-logind
+        └─systemd-udevd
+```
+
+> 看父子关系用 `pstree`，看资源占用用 `top`——两者互补。所有进程的祖先是 PID 1 的 systemd。
+
+#### ps：进程快照
+
+```bash
+[root@beta ~]# ps aux
+USER         PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND
+root           1  0.2  0.4 108608 16672 ?        Ss   12:52   0:04 /usr/lib/systemd/systemd
+
+# a 显示当前终端所有进程
+# u 以用户格式输出
+# x 显示当前用户在所有终端的进程
+```
+
+| 常用组合 | 用途 |
+| --- | --- |
+| `ps aux` | 全系统进程快照 |
+| `ps -ef` | 带 PPID（父进程）的另一种格式 |
+| `ps aux --sort=-%cpu` | 按 CPU 降序，找最耗资源的进程 |
+
+#### pgrep：按条件检索
+
+```bash
+-l 输出进程名 + uid
+-U 检索指定用户的进程
+-t 指定终端的进程
+-x 精确匹配
+```
+
+### 10.3 前后台调度与信号
+
+#### 前后台切换
+
+```bash
+[root@beta ~]# sleep 5 &        # & 把任务放到后台执行
+[1] 6592
+[root@beta ~]# jobs -l          # 查看后台任务列表
+[2]+  6593 Running                 sleep 1m &
+[root@beta ~]# fg 1             # 把后台任务 1 恢复到前台
+[root@beta ~]# sleep 1m         # Ctrl+Z 把前台任务挂到后台（stopped）
+^Z
+[1]+  Stopped                 sleep 1m
+[root@beta ~]# bg 1             # 按任务号把已停止的任务改到后台继续跑
+[1]+ sleep 1m &
+```
+
+#### 杀死进程
+
+1. `Ctrl + C` 终止当前终端的前台任务；
+2. `kill [选项] PID` 向指定进程发信号。
+
+| 信号 | 名称 | 含义 |
+| --- | --- | --- |
+| `-1` | `SIGHUP` | 挂断；对守护进程表示**重载配置** |
+| `-15` | `SIGTERM` | **默认值**，正常终止（进程可捕获并清理） |
+| `-9` | `SIGKILL` | 强制杀死，**进程来不及清理，可能丢数据** |
+| `-18` | `SIGCONT` | 继续被停止的进程 |
+| `-19` | `SIGSTOP` | 暂停进程 |
+
+```bash
+kill -9 6617              # 杀指定 PID
+killall sleep             # 按进程名杀（所有匹配）
+pkill -9 PNAME            # 按进程名杀（支持模式匹配）
+```
+
+> 优先用 `-15`，`-9` 是兜底——强制杀会让正在写的文件停在中间状态。
+
+#### 调整调度优先级
+
+```bash
+nice -n 10 command        # 以 nice 值 10 启动（范围 -20 ~ 19，默认 0）
+renice -n 5 -p 1234       # 改已运行进程的 nice 值（需 root 才能调高优先级）
+```
+
+> nice 值**越小优先级越高**。普通用户只能把 nice 往大调（降低优先级），只有 root 能设负值。
+
+#### 登录会话分析
+
+```bash
+last      # 登录成功记录（读 /var/log/wtmp）
+lastb     # 登录失败记录（读 /var/log/btmp）
+users     # 简单显示当前在线用户
+who       # 显示具体登录信息（终端、来源 IP、时间）
+w         # 显示登录用户及其正在执行的命令
+```
+
+### 10.4 systemd 服务管理
+
+systemd 是内核加载的**第一个进程（PID 1）**，负责整个系统的服务与启动流程。日常用 `systemctl` 操作：
+
+```bash
+systemctl start  服务名     # 启动
+systemctl stop   服务名     # 停止
+systemctl restart 服务名    # 重启
+systemctl status 服务名     # 查看状态（含最近日志）
+systemctl enable 服务名     # 开机自启动
+systemctl disable 服务名    # 关闭开机自启动
+systemctl is-enabled 服务名 # 只看自启动状态（脚本判断用）
+```
+
+| 操作 | 命令 | 说明 |
+| --- | --- | --- |
+| 看全部服务状态 | `systemctl list-units --type=service` | 只列当前加载的 |
+| 看失败的服务 | `systemctl --failed` | 排障第一步 |
+| 重载配置 | `systemctl daemon-reload` | 改完 unit 文件后必做 |
+| 切换运行目标 | `systemctl isolate multi-user.target` | 等价于切换运行级别 |
+| 看默认目标 | `systemctl get-default` | 改 `set-default` |
+
+> `enabled` 只影响开机；要立刻生效还得 `start`。反过来说，`start` 不写 enable，重启就没了。
+
+#### 看服务监听端口
+
+```bash
+[root@beta ~]# ss -aptuln
+Netid    State     Recv-Q     Send-Q         Local Address:Port         Peer Address:Port    Process
+udp      UNCONN    0          0                  127.0.0.1:323               0.0.0.0:*        users:(("chronyd",pid=788,fd=5))
+tcp      LISTEN    0          128                  0.0.0.0:22                0.0.0.0:*        users:(("sshd",pid=848,fd=7))
+```
+
+> `ss -aptuln` 是 `netstat` 的现代替代品（更快、默认就带 `-p` 显示进程）。
+
+#### 定位系统日志
+
+```bash
+journalctl                 # 全部日志
+journalctl -u nginx         # 只看某个服务的日志
+journalctl -p err           # 只看 error 及以上级别
+journalctl -f               # 实时跟踪
+journalctl --since "1 hour ago"
+```
+
+> 传统日志在 `/var/log/` 下（`messages`、`secure`、`boot.log`）；systemd 服务统一走 journal，`journalctl -u` 比翻文件快得多。
+
+## 十一、软件包管理
+
+> 对应 RHCSA「Deploy, configure and maintain systems」：RPM 查询、仓库配置、安装 / 更新 / 回滚、源码编译、计划任务。
+
+### 11.1 软件包类型
+
+| 类型 | 优点 | 缺点 |
+| --- | --- | --- |
+| **源码包** | 可看源码、可自定义路径与功能 | 安装麻烦，需手动解决依赖、自己编译 |
+| **二进制包（RPM）** | 已编译好，安装快、易管理 | 不能自定义功能，看不到源码 |
+
+RPM 包命名规则：`nginx-1.24.0-1.el9.x86_64.rpm`（`名称-版本-发布号-系统版本.架构`）。
+
+### 11.2 RPM 查询
+
+```bash
+rpm -qa | grep nginx      # 模糊查询已安装的包
+rpm -ql nginx            # 列出该包安装的所有文件（q=查询，l=列表）
+rpm -qi nginx            # 查看包的详细信息
+rpm -qf /usr/sbin/nginx  # 反查某个文件属于哪个包
+```
+
+依赖关系有三种：**树形依赖**（层层依赖）、**环形依赖**（a 依赖 b、b 又依赖 a）、**模块依赖**（缺共享库）。`yum`/`dnf` 会自动解决这三类，RPM 单独装才容易撞上。
+
+### 11.3 yum / dnf 与本地源
+
+`yum` 在 RHEL 9 已是 `dnf` 的软链，命令通用。
+
+```bash
+yum repolist                    # 列出所有仓库
+yum list 软件包名               # 查看仓库中提供的版本
+yum install 软件包名            # 安装（-y 静默）
+yum update 软件包名             # 更新
+yum remove 软件包名             # 卸载
+yum clean all                   # 清除缓存
+yum provides 命令名             # 反查命令由哪个包提供
+yum list 软件包名 --showduplicates  # 列出所有版本
+yum -y install --setopt=obsoletes=0 软件包名   # 指定装某个版本
+```
+
+本地仓库配置：
+
+```bash
+[root@beta ~]# vi /etc/yum.repos.d/local.repo
+[root@beta ~]# cat /etc/yum.repos.d/local.repo 
+[local]
+name=myrepo
+baseurl=file:///home/king/apple    # 仓库 url
+enabled=1                          # 是否启用
+gpgcheck=0                          # 是否校验签名
+```
+
+| 字段 | 含义 |
+| --- | --- |
+| `baseurl` | 仓库地址，本地目录用 `file://`，远程用 `http://` 或 `ftp://` |
+| `enabled` | `1` 启用、`0` 禁用 |
+| `gpgcheck` | `1` 校验 RPM 签名；关掉会提示但不阻止安装 |
+| `priority` | 装了 `yum-priorities` 插件后生效，`1` 最高、`99` 最低 |
+
+### 11.4 源码包安装
+
+安装步骤：
+
+1. 官网下载源码包并解压；
+2. 安装编译依赖（`yum groupinstall "Development Tools"`）；
+3. `./configure` 检测系统环境、指定安装路径与功能；
+4. `make` 编译成二进制；
+5. `make install` 安装。
+
+> 卸载源码包没有统一命令——**装之前记下 `--prefix`**，否则只能手动删目录。这也是生产环境更倾向 RPM/容器镜像的原因。
+
+#### Flatpak：第三种选择
+
+应用沙箱化分发，自带运行时依赖、跨发行版通用，多用于桌面软件。RHEL 服务器上基本用不到，了解即可：
+
+```bash
+flatpak install flathub com.spotify.Client
+flatpak list --app
+```
+
+### 11.5 计划任务
+
+| 工具 | 特点 |
+| --- | --- |
+| `cron` | 周期性任务，写 `/etc/crontab` 或 `crontab -e` |
+| `at` | 一次性任务，到点执行 |
+| `systemd timer` | 现代方案，与 systemd 日志、依赖打通 |
+
+```bash
+crontab -e                  # 编辑当前用户的定时任务
+crontab -l                  # 查看
+crontab -r                  # 清空
+systemctl status crond      # 确认 cron 服务在跑
+```
+
+crontab 五段时间格式：
+
+```bash
+分  时  日  月  周     命令
+*   *   *   *   *      # 每分钟
+30  2   *   *   1      # 每周一 02:30
+0   9   *   *   1-5    # 工作日 09:00
+```
+
+```bash
+at 02:00 tomorrow          # 一次性任务
+atq / atrm 任务号          # 查看 / 删除 at 任务
+```
+
+> RHCSA 考点：会用 `crontab -e` 让任务按周期跑，并确认 `crond` 服务 enabled。
+
+## 十二、网络与安全基础
+
+> 对应 RHCSA「Manage security」与网络基础：防火墙放行、SSH 密钥登录、时间同步。
+
+### 12.1 firewalld
+
+```bash
+systemctl status firewalld                    # 确认在跑
+firewall-cmd --list-all                       # 当前 zone 的规则
+firewall-cmd --add-service=http --permanent   # 放行 http（永久生效）
+firewall-cmd --add-port=8080/tcp --permanent  # 放行单端口
+firewall-cmd --reload                         # 重载（不加 permanent 的立即失效）
+```
+
+| 概念 | 说明 |
+| --- | --- |
+| **zone** | 一组规则的集合，按网卡的可信程度划分（`public` / `internal` / `trusted`） |
+| **service** | 预置的端口组合（`http` = 80/tcp） |
+| `--permanent` | 只写配置不立即生效；**必须再 `--reload`** |
+
+> 排障顺序：`firewall-cmd --list-all` 看当前放行 → `--add-service` 加 → `--reload`。少加 `--permanent` 的话重启就丢。
+
+### 12.2 SSH
+
+```bash
+ssh-keygen -t ed25519          # 生成本机密钥对
+ssh-copy-id user@host          # 把公钥推到远端（免密登录）
+ssh -i ~/.ssh/id_ed25519 user@host
+```
+
+| 配置项 | 位置 | 作用 |
+| --- | --- | --- |
+| `PermitRootLogin` | `/etc/ssh/sshd_config` | 是否允许 root 直接登录（建议 `no`） |
+| `PasswordAuthentication` | 同上 | 关掉后只能密钥登录 |
+| `Port` | 同上 | 改默认 22 端口 |
+
+```bash
+systemctl restart sshd        # 改完配置重启生效
+```
+
+> 改 sshd_config 前先**保留一个已连接的会话**，改错了还能从旧会话改回来——否则把自己锁在外面。
+
+### 12.3 时间同步
+
+```bash
+timedatectl                     # 看当前时间与时区
+timedatectl set-timezone Asia/Shanghai
+systemctl enable --now chronyd  # 启用并立即启动
+chronyc sources                 # 看同步源状态
+```
+
+> 时间不同步的后果比想象的大：Kerberos 认证直接失败、证书校验报错、日志时间线错乱。**K8s 集群对节点时间差尤其敏感**。
+
+---
+
+## 十三、进阶专题：退出登录后，下载任务为什么会停
 
 > 适用范围：SSH 远程登录、本地终端、`su`/`sudo` 切换的会话。
 > 关键词：SIGHUP、会话（session）、进程组、systemd-logind、断点续传。
 
-### 11.1 为什么会停：三条独立的"kill 路径"
+### 13.1 为什么会停：三条独立的"kill 路径"
 
 | # | 触发机制 | 原理 | 影响范围 | 是否常见 |
 | --- | --- | --- | --- | --- |
@@ -2171,7 +2575,7 @@ init [0123456]       # 切换不同运行级别
 - `&` 放到后台**不等于**脱离会话：它仍在同一 session、同一进程组，照样收 `SIGHUP`。
 - 如果只是网络断了（SSH TCP 超时），本地 `wget` 直连其实还能跑；真正致命的是终端/会话消失。
 
-### 11.2 如何判断进程是否真的"脱钩"
+### 13.2 如何判断进程是否真的"脱钩"
 
 ```bash
 ps -o pid,ppid,pgid,sid,tty,stat,cmd -p <PID>
@@ -2195,7 +2599,7 @@ loginctl show-session $XDG_SESSION_ID  # 看 KillProcesses / Scope
 grep -E 'KillUserProcesses|RemoveIPC' /etc/systemd/logind.conf
 ```
 
-### 11.3 解决方案（按推荐度排序）
+### 13.3 解决方案（按推荐度排序）
 
 #### 方案 A：进程脱钩（最快，适合一次性任务）
 
@@ -2243,7 +2647,6 @@ screen -r dl
 screen -dmS dl bash -c 'wget -c URL; exec bash'
 ```
 
-> 注意：tmux server 本身也在用户会话里，若被 ③ 回收同样会死。**配合方案 C 的 linger 使用最稳。**
 
 #### 方案 C：systemd 托管（长期/服务器/需自动重启，最健壮）
 
@@ -2329,7 +2732,7 @@ wget -c --spider URL       # 探测是否支持续传
 ls -l --time-style=full-iso big.iso   # 观察大小是否仍在增长
 ```
 
-### 11.4 方案选择速查
+### 13.4 方案选择速查
 
 | 场景 | 推荐做法 | 抗 ①②③ |
 | --- | --- | --- |
@@ -2339,25 +2742,9 @@ ls -l --time-style=full-iso big.iso   # 观察大小是否仍在增长
 | 已经在跑、来不及重启 | `Ctrl-Z` → `bg` → `disown -h %1` | ①② |
 | root 长期任务 | 系统级 systemd unit | ①②③ |
 
-### 11.5 避坑清单
+> 本章相关的完整避坑与排障（`nohup` 局限、管道保护范围、`wget -c` Range、linger 副作用、SSH 加固等）已抽离至 [`troubleshooting.md`](troubleshooting.md) 第七章。
 
-1. **`nohup` 不是万能的** —— 它只挡 `SIGHUP`，挡不住 logind 的 cgroup 清理。长任务请加 `setsid` 或走 systemd。
-2. **管道里只有第一个命令被保护**：`nohup wget URL | tee log &` 中 `nohup` 只作用于 `wget`，`tee` 仍会死。整条管道请包一层：`nohup bash -c 'wget URL | tee log' &`
-3. **`wget -c` 需要服务端支持 Range**，否则会重新下载或报错；先用 `curl -I` 确认 `Accept-Ranges: bytes`。
-4. **后台任务的输出要重定向**，否则写满 `nohup.out` 或阻塞在已消失的终端上。
-5. **开启 linger 后 `user@UID.service` 会一直存在**，注意它托管的进程会长期占用内存。
-6. **不要用 `kill -9` 收尾**：先 `kill -TERM` 让下载器正常落盘（`.part`/`.aria2` 文件），否则续传元信息可能丢失。
-7. **SSH 侧也可加固**，减少"假死断连"：
-
-   ```bash
-   # ~/.ssh/config
-   Host *
-       ServerAliveInterval 30
-       ServerAliveCountMax 3
-       TCPKeepAlive yes
-   ```
-
-### 11.6 结论
+### 13.6 结论
 
 > 退出登录后下载停止，**根因是进程仍绑定在登录会话上**（收 `SIGHUP`）或**被 logind 随会话回收**。
 > 对策就三层：**`setsid`/`nohup` 脱钩 → `tmux` 保活 → `systemd + linger` 托管**；

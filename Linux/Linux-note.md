@@ -3,6 +3,8 @@
 > 适用范围：Linux 入门基础 + 常用运维专题。
 > 关键词：一切皆文件、目录结构、文件操作、文本三剑客（grep / sed / awk）、用户与用户组、权限与属主、运行级别、会话与进程脱钩。
 
+> **考纲基线**：内容对齐 RHCSA EX200。注意官方考试现已基于 **RHEL 10**（RHEL 9 时代结束），本笔记示例环境为 Rocky Linux 9.8（内核 5.14）。两者主要差异：① RHEL 10 默认禁止 root 直接 SSH 登录；② Flatpak 集成为考纲单列的「管理软件」类目；③ `dnf` 是唯一包管理器（`yum` 仅为兼容软链）；④ 命令层面本文写法在 RHEL 9 / 10 上通用，有差异处单独标注。
+
 ---
 
 ## 一、核心思想：一切皆文件
@@ -87,18 +89,6 @@ Last login: Wed Oct  7 15:45:25 2026
 | `Esc + .` | 插入上一条命令的最后一个参数（连按可往前翻） |
 
 ### 3.4 目录操作
-
-#### man
-
-```bash
-man ls        # 获得命令或配置文件的帮助信息
-```
-
-#### help
-
-```bash
-help cd       # 获得 shell 内置命令的帮助信息
-```
 
 #### cd
 
@@ -1031,6 +1021,62 @@ find king/sharefile/ -name '*log*' -size +1k -exec ls -lh {} +
 > `*log*` 必须加引号，避免被当前 shell 提前展开。
 > `ll` 是别名，`find -exec` 认不出来，要写 `ls -l` / `ls -lh`。
 
+### 3.10 帮助与文档
+
+> RHCSA 考点：locate, read, and use system documentation —— 包括 `man`、`info` 与 `/usr/share/doc`。
+
+#### man：命令与配置文件手册
+
+```bash
+man ls                 # 查命令
+man 5 passwd           # 查配置文件（5 = 文件格式章节）
+man -k password        # 按关键词搜索有哪些手册（等价 apropos）
+man -f ls              # 看这个名字都有哪些手册（等价 whatis）
+```
+
+手册章节号——同一个名字在不同章节是不同东西：
+
+| 章节 | 内容 | 例子 |
+| --- | --- | --- |
+| 1 | 用户命令 | `man 1 passwd`（改密码命令） |
+| 5 | 配置文件格式 | `man 5 passwd`（`/etc/passwd` 格式） |
+| 8 | 系统管理命令 | `man 8 mount` |
+
+> 拿不准 `passwd` 是命令还是文件时，**章节号就是答案**：1 是命令、5 是文件。
+
+#### help：shell 内置命令
+
+`cd`、`echo`、`type` 这类内置命令没有独立可执行文件，`man` 查不到或查到的是另一个东西，用：
+
+```bash
+help cd                # shell 内置命令的帮助
+type cd                # 先确认它到底是内置、别名还是外部命令
+```
+
+#### info：更详细的手册
+
+GNU 工具的完整文档，比 `man` 更有层次（带节点导航）：
+
+```bash
+info coreutils         # 查看某个工具的 info 文档
+```
+
+#### /usr/share/doc：软件自带文档
+
+安装包附带的 README、示例配置、变更日志都在这里，**排障时的第一手资料**：
+
+```bash
+ls /usr/share/doc/                 # 看装了哪些包的文档
+ls /usr/share/doc/nginx/           # 该包的 README / 示例配置
+zcat /usr/share/doc/nginx/CHANGELOG.gz
+rpm -qd nginx                      # 列出某包安装了哪些文档（-qd = query documentation）
+```
+
+> 使用顺序建议：先 `man` 快速查参数 → 再看 `/usr/share/doc` 读实际示例配置 → 复杂工具的完整语义看 `info`。
+> `/usr/share/doc` 里的示例配置常可以直接拷来改，比自己从零写快得多。
+
+---
+
 ## 四、Vim 编辑器
 
 | 模式       | 进入方式                                              |
@@ -1342,6 +1388,22 @@ u=rwx,g=rx,o=rx
 > `0022` → 目录 `755`、文件 `644`（root 默认）；`0002` → 目录 `775`、文件 `664`（普通用户默认，同组可写）。
 > 它是**进程属性**，只影响之后新建的文件，`chmod` 是事后改；两者不冲突但别指望 umask 去改已有文件。
 
+**永久生效**（`umask` 是进程属性，只在当前会话有效，重开终端就还原）：
+
+```bash
+# 只对自己生效
+echo 'umask 027' >> ~/.bashrc
+
+# 对所有用户生效（登录时由 /etc/profile 加载）
+echo 'umask 027' >> /etc/profile
+```
+
+| 文件 | 作用范围 |
+| --- | --- |
+| `/etc/profile` | 全局，所有用户登录时读取（考试常考） |
+| `/etc/bashrc` | 全局，每个交互式 bash 读取 |
+| `~/.bashrc` | 仅当前用户 |
+
 ### 7.4 符号模式
 
 格式：
@@ -1534,6 +1596,16 @@ restorecon -v /etc/fstab         # 恢复默认标签
 | `disabled` | 完全关闭（重启后才生效，不推荐） |
 
 上下文的四段格式：`用户:角色:类型:级别`（如 `system_u:object_r:etc_t:s0`），**排障时只看第三段「类型」**。
+
+文件和进程都有上下文，查法不同：
+
+```bash
+ls -Z /var/www/html        # 文件的上下文
+ps -efZ | grep httpd       # 进程的上下文（关注 type 段）
+id -Z                      # 当前用户的上下文
+```
+
+> **匹配规则**：进程的 type 决定它能访问哪些 type 的文件。`httpd_t` 的进程只能读 `httpd_sys_content_t` 一类标签的文件——把网页丢进 `/var/www/html` 却没 `restorecon`，文件带的是 `user_home_t`，Apache 就读不到（浏览器报 403）。这是 SELinux 排障最常见的一幕。
 
 ```bash
 aureport --avc                   # 查看被拒绝的记录
@@ -1799,8 +1871,12 @@ Command (m for help): n       # 建分区操作与 MBR 一样
 ```bash
 mkfs.xfs /dev/sdb1        # 建 xfs 文件系统（会清空数据！）
 mkfs.ext4 /dev/sdb1       # 建 ext4
+mkfs.vfat /dev/sdb1       # 建 vfat（FAT32，Windows 兼容）
 df -Th                    # 看已挂载的文件系统类型与用量
 ```
+
+> vfat（FAT32）不支持 Linux 权限位、单文件上限 4G、无日志——只适合 U 盘 / 双系统交换区，别拿它放系统文件。
+> 考纲要求的三种文件系统是 **vfat / ext4 / xfs**，创建、挂载、卸载都要会。
 
 #### swap：创建与启用
 
@@ -1889,6 +1965,16 @@ UUID=9c104b60-e213-4e78-98de-32c814536ffb /boot                   xfs     defaul
 | 4 选项 | `defaults` = `rw,suid,dev,exec,auto,nouser,async` |
 | 5 dump | 备份频率，`0` 表示不 dump（现代系统基本都是 0） |
 | 6 pass | 非 0 时开机按顺序检查依赖；`0` = 不检查，网络文件系统才用 1 / 2 |
+
+**用 UUID 还是 LABEL**：考纲写的是「by UUID or label」。UUID 唯一可靠，是首选；LABEL 可读性好但可能重复。两者都能查到，也都能写进 fstab：
+
+```bash
+lsblk -f                                  # 一次列出 UUID 与 LABEL
+blkid /dev/sdb1                           # 单独查一个分区
+LABEL=DATA  /data  xfs  defaults  0 0     # fstab 里按标签挂载
+e2label /dev/sdb1 DATA                    # 改 ext4 标签
+xfs_admin -L DATA /dev/sdb1               # 改 xfs 标签（需先卸载）
+```
 
 > 改完**必须 `mount -a` 验一遍**，写错会直接进救援模式：
 > - 设备名写错或设备缺失时，系统起不来但能进 shell；
@@ -2184,7 +2270,45 @@ pvremove /dev/sda2 /dev/sda3 /dev/sda4   # ④ 释放 PV，分区退回纯分区
 | `mkfs.xfs` / `mkfs.ext4` | 建文件系统（**会清空数据**） | 格式化新分区 |
 | `blkid` / `lsblk -f` | 查看 UUID、文件系统类型 | 写 fstab 前确认 |
 
-### 8.6 autofs：按需自动挂载
+### 8.6 NFS 挂载与 autofs
+
+#### 挂载 NFS 网络文件系统
+
+NFS 是 Linux 之间共享目录的标准方式（服务端搭建见 [`NFS.md`](../common%20server/NFS.md)）。客户端装好 `nfs-utils` 即可挂载：
+
+```bash
+dnf install -y nfs-utils
+
+showmount -e 10.10.0.2                    # ① 先看服务端导出了哪些目录
+mkdir -p /mnt/nfs                          # ② 挂载点必须是已存在的目录
+mount -t nfs 10.10.0.2:/nfs/data /mnt/nfs  # ③ 手动挂载（重启失效）
+df -h | grep nfs                           # ④ 确认挂上了
+
+umount /mnt/nfs                            # 卸载
+```
+
+写进 fstab 做开机自动挂载（NFS 的 `pass` 字段写 `0`，线程并发时避免卡在顺序检查上）：
+
+```text
+10.10.0.2:/nfs/data  /mnt/nfs  nfs  defaults,_netdev  0 0
+```
+
+| 挂载选项 | 作用 |
+| --- | --- |
+| `_netdev` | 声明这是网络设备，等网络就绪后再挂（**不写会拖慢开机，甚至挂不上**） |
+| `soft` | 服务端无响应时超时报错返回，而不是一直卡住 |
+| `hard`（默认） | 一直重试，I/O 会卡死——除非有硬性要求，否则配 `soft` |
+| `ro` | 只读挂载，适合共享只读数据 |
+
+```bash
+mount -a                     # 改完 fstab 立刻验证
+systemctl daemon-reload      # systemd 仍认旧配置时
+```
+
+> 顺序别搞反：先 `showmount -e` 确认服务端放行 → 再 `mkdir` 挂载点 → 最后挂。
+> 客户端排障（挂不上 / 权限不对）见 [`troubleshooting.md`](troubleshooting.md)；服务端 exports 语法、root_squash、防火墙与 rpcbind 端口注册见 [`NFS.md`](../common%20server/NFS.md)。
+
+#### autofs：按需自动挂载
 
 fstab 的问题是开机就要挂上，NFS 一挂十几个会让开机变慢，源不在时还会卡启动。autofs 的思路是**用到才挂、不用自动卸载**。
 
@@ -2462,6 +2586,59 @@ journalctl --since "1 hour ago"
 
 > 传统日志在 `/var/log/` 下（`messages`、`secure`、`boot.log`）；systemd 服务统一走 journal，`journalctl -u` 比翻文件快得多。
 
+#### 日志持久化（Preserve system journals）
+
+**默认 journal 存在 `/run/log/journal`（内存），重启就没了**。考纲明确要求「保留系统日志」，做法是建目录让 journald 落盘：
+
+```bash
+mkdir -p /var/log/journal
+systemd-tmpfiles --create --prefix /var/log/journal   # 建目录并设好权限
+systemctl restart systemd-journald
+journalctl --disk-usage                 # 确认已落盘
+```
+
+也可以显式配置 `/etc/systemd/journald.conf`：
+
+```ini
+[Journal]
+Storage=persistent      # auto / persistent / volatile / none
+SystemMaxUse=500M       # 限制占用上限，防止吃满 /var
+```
+
+```bash
+systemctl restart systemd-journald
+journalctl -b -1         # 验证：能查到上一次启动的日志，说明持久化成功
+```
+
+> `Storage=auto` 的行为是「目录存在就持久化」，所以建目录与改配置二选一即可；考试更稳妥的是两者都做。
+> 生产环境一定配 `SystemMaxUse`，否则日志能把 `/var` 吃满——这是很经典的事故。
+
+### 10.5 系统调优：tuned
+
+`tuned` 是 RHEL 系的调优守护进程，把「内核参数 + 磁盘调度 + 电源策略」等一整套参数打包成**调优配置文件（profile）**，按场景一键切换，不必自己逐项改 `sysctl`。
+
+```bash
+systemctl status tuned
+tuned-adm list                  # 列出所有可用 profile
+tuned-adm active                # 看当前用的是哪个
+tuned-adm recommend             # 让 tuned 按机器类型推荐一个
+tuned-adm profile throughput-performance   # 切到指定 profile
+tuned-adm off                   # 关闭调优
+```
+
+| profile | 适用场景 |
+| --- | --- |
+| `throughput-performance` | 吞吐优先：大文件传输、数据库服务器 |
+| `latency-performance` | 延迟优先：实时计算、高频交易 |
+| `balanced` | 默认，性能与功耗折中 |
+| `powersave` | 省电优先：笔记本、低负载机器 |
+| `virtual-guest` | 虚拟机内的推荐配置 |
+
+> 这是「调整进程调度 / 性能」类题目的标准三步：`tuned-adm active` 看现状 → `recommend` 拿建议 → `profile` 切换。
+> 虚拟化环境里 `recommend` 通常给出 `virtual-guest`，别照抄物理机的选择。
+
+---
+
 ## 十一、软件包管理
 
 > 对应 RHCSA「Deploy, configure and maintain systems」：RPM 查询、仓库配置、安装 / 更新 / 回滚、源码编译、计划任务。
@@ -2535,12 +2712,29 @@ gpgcheck=0                          # 是否校验签名
 
 #### Flatpak：第三种选择
 
-应用沙箱化分发，自带运行时依赖、跨发行版通用，多用于桌面软件。RHEL 服务器上基本用不到，了解即可：
+应用沙箱化分发，自带运行时依赖、跨发行版通用。**RHEL 10 考纲把它单列为「管理软件」类目的一部分**，不再只是了解即可：
 
 ```bash
+# 配置仓库（考纲明确要求先配好访问权限）
+flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+flatpak remotes                     # 查看已配置的仓库
+
+flatpak search 关键词                # 搜索
 flatpak install flathub com.spotify.Client
-flatpak list --app
+flatpak list --app                  # 列出已安装应用
+flatpak remove com.spotify.Client   # 卸载
+flatpak update                      # 更新全部
 ```
+
+| 命令 | 作用 |
+| --- | --- |
+| `remote-add` / `remotes` | 配置 / 查看仓库 |
+| `install` / `remove` | 安装 / 卸载 |
+| `list --app` / `list --runtime` | 列出应用 / 运行时 |
+| `update` / `repair` | 更新 / 修复 |
+
+> Flatpak 应用默认装在 `/var/lib/flatpak`（系统级）或 `~/.local/share/flatpak`（用户级）。
+> 服务器环境用得少，但既然是考纲条目，命令要记熟——**`remote-add` 最容易漏**。
 
 ### 11.5 计划任务
 
@@ -2571,7 +2765,54 @@ at 02:00 tomorrow          # 一次性任务
 atq / atrm 任务号          # 查看 / 删除 at 任务
 ```
 
-> RHCSA 考点：会用 `crontab -e` 让任务按周期跑，并确认 `crond` 服务 enabled。
+#### systemd timer
+
+比 cron 更好用的现代方案：日志自动进 journal、能声明依赖、支持开机后补跑。**考纲指名要求**。
+
+一个 timer 由两个文件组成——`.service` 定义做什么，`.timer` 定义什么时候做：
+
+```ini
+# /etc/systemd/system/backup.service —— 做什么
+[Unit]
+Description=Daily backup
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/backup.sh
+```
+
+```ini
+# /etc/systemd/system/backup.timer —— 什么时候做
+[Unit]
+Description=Run backup daily
+
+[Timer]
+OnCalendar=daily              # 或 *-*-* 02:30:00
+Persistent=true               # 关机期间错过的，开机后补跑
+
+[Install]
+WantedBy=timers.target
+```
+
+```bash
+systemctl daemon-reload
+systemctl enable --now backup.timer
+systemctl list-timers --all           # 查看所有 timer 与下次触发时间
+systemctl status backup.timer
+journalctl -u backup.service          # 执行日志
+```
+
+| 对比 | cron | systemd timer |
+| --- | --- | --- |
+| 日志 | 需自己重定向 | 自动进 journal（`journalctl -u`） |
+| 错过补跑 | 不支持 | `Persistent=true` |
+| 时间表达 | `分 时 日 月 周` | `OnCalendar=`（接近自然语言） |
+| 依赖其他服务 | 难 | 直接写 `[Unit]` 依赖 |
+
+> `OnCalendar` 语法可用 `systemd-analyze calendar "daily"` 验证，并顺带显示下次触发时间。
+> 改完 unit 文件必须 `systemctl daemon-reload`，否则 systemd 读的还是旧定义。
+
+> RHCSA 考点：会用 `crontab -e` 让任务按周期跑并确认 `crond` 服务 enabled；`at` 做一次性任务；`systemd timer` 是更现代的选择。
 
 ## 十二、网络与安全基础
 
@@ -2901,3 +3142,184 @@ ls -l --time-style=full-iso big.iso   # 观察大小是否仍在增长
 > 退出登录后下载停止，**根因是进程仍绑定在登录会话上**（收 `SIGHUP`）或**被 logind 随会话回收**。
 > 对策就三层：**`setsid`/`nohup` 脱钩 → `tmux` 保活 → `systemd + linger` 托管**；
 > 同时**永远给下载器加断点续传参数（`-c` / `-C -`）**，这样即便被杀也不会前功尽弃。
+
+---
+
+## 十四、Shell 脚本基础
+
+> 对应 RHCSA 考纲第 3 类「Create simple shell scripts」：条件执行（if / test / `[]`）、循环（for）、
+> 处理脚本输入（`$1` `$2` …）、处理命令输出。
+> 完整语法（变量、字符串操作、case、函数）见 [`shell-note-zh.md`](shell-note-zh.md)，本章只收考纲要求的这四项。
+
+### 14.1 脚本骨架与执行
+
+```bash
+#!/bin/bash                    # shebang：指定解释器，必须第一行
+# 脚本说明
+echo "hello"                   # 正文
+exit 0                         # 退出码：0 表示成功
+```
+
+```bash
+chmod +x script.sh             # 加执行位
+./script.sh                    # 方式一：直接执行（靠 shebang 选解释器）
+bash script.sh                 # 方式二：交给解释器执行（不需要执行位）
+```
+
+> 两者有实质区别：`bash script.sh` 是新起一个 bash 进程跑脚本，**脚本里的变量、cd 都不影响当前 shell**；
+> `source script.sh`（或 `. script.sh`）才是在当前 shell 里执行，会影响当前环境。
+
+### 14.2 条件执行：if / test / `[]`
+
+```bash
+if [ 条件 ]; then
+    命令...
+elif [ 其他条件 ]; then
+    命令...
+else
+    命令...
+fi
+```
+
+`[ ]` 是 `test` 命令的简写，**方括号内侧必须留空格**（`[ "$a" = "$b" ]`），这是最常见的报错来源。
+
+| 判断类型 | 写法 | 说明 |
+| --- | --- | --- |
+| 字符串相等 / 不等 | `[ "$a" = "$b" ]` / `[ "$a" != "$b" ]` | 等号两侧要空格 |
+| 字符串为空 / 非空 | `[ -z "$a" ]` / `[ -n "$a" ]` | z = zero length |
+| 数字比较 | `[ "$a" -eq 1 ]` | `-eq -ne -gt -ge -lt -le`，**数字不能用 `=`** |
+| 文件存在 | `[ -e "$f" ]` | |
+| 普通文件 / 目录 | `[ -f "$f" ]` / `[ -d "$f" ]` | |
+| 可读 / 可写 / 可执行 | `[ -r "$f" ]` / `-w` / `-x` | |
+
+```bash
+#!/bin/bash
+if [ -d /backup ]; then
+    echo "目录已存在"
+else
+    mkdir -p /backup
+fi
+
+# 多个条件用 && 连接
+if [ "$1" -gt 0 ] && [ "$1" -lt 100 ]; then
+    echo "在 1~99 之间"
+fi
+```
+
+> **变量一定要加双引号**：`[ $a = x ]` 在 `a` 为空时会展开成 `[ = x ]`，直接语法错误；写成 `[ "$a" = x ]` 才安全。
+> 复杂条件使用 bash 扩展的 `[[ ]]`：支持 `&&`、`||`、`=~` 正则，且不要求引号。考纲字面写的是 `[ ]`，两个都要会。
+
+### 14.3 循环：for / while
+
+```bash
+# for：遍历列表
+for i in 1 2 3; do
+    echo "$i"
+done
+
+# for：遍历文件（最常用）
+for f in /var/log/*.log; do
+    echo "== $f =="
+    tail -n 3 "$f"
+done
+
+# for：C 风格计数
+for ((i=1; i<=5; i++)); do
+    echo "$i"
+done
+
+# while：条件成立就一直循环
+count=1
+while [ "$count" -le 5 ]; do
+    echo "$count"
+    count=$((count + 1))
+done
+```
+
+| 循环 | 适用 |
+| --- | --- |
+| `for i in 列表` | 已知列表 / 遍历文件 |
+| `for ((;;))` | 计数循环 |
+| `while [ 条件 ]` | 次数未知，靠条件退出 |
+| `until [ 条件 ]` | 与 while 相反：条件**不成立**时循环 |
+
+> 遍历命令输出写 `for f in $(ls)` 有坑——文件名带空格会被拆成多个；稳妥写法是 `while read -r line; do ...; done < file`。
+
+### 14.4 位置参数与输入
+
+| 变量 | 含义 |
+| --- | --- |
+| `$0` | 脚本名本身 |
+| `$1` `$2` … | 第 1、2 个参数（第 10 个要写 `${10}`） |
+| `$#` | 参数个数 |
+| `$@` | 所有参数（写成 `"$@"` 保留各自边界，推荐） |
+| `$*` | 所有参数（合成一个字符串，少用） |
+| `$?` | **上一条命令**的退出码（0 = 成功） |
+
+```bash
+#!/bin/bash
+if [ $# -lt 1 ]; then
+    echo "用法：$0 <文件名>"
+    exit 1
+fi
+echo "脚本名：$0"
+echo "第一个参数：$1"
+echo "参数个数：$#"
+
+for arg in "$@"; do          # 遍历所有参数
+    echo "参数：$arg"
+done
+```
+
+从标准输入读：
+
+```bash
+read -p "请输入用户名：" name     # 交互式读一行（-p 是提示语）
+echo "$name"
+
+while read -r line; do          # 逐行读文件（批量处理的标准写法）
+    echo "$line"
+done < /etc/passwd
+```
+
+> `read -p "提示语" 变量名` —— 变量名不要加 `$`。`-r` 阻止反斜杠转义，处理路径时必加。
+
+### 14.5 处理命令输出
+
+```bash
+# $( ) 命令替换：把命令输出当成值（推荐写法）
+now=$(date +%F)
+count=$(ls /var/log/*.log | wc -l)
+echo "今天是 $now，日志文件有 $count 个"
+
+# 管道：把输出交给下一个命令
+ps aux | grep nginx
+
+# $? 判断上一条命令是否成功
+if ! grep -q "root" /etc/passwd; then
+    echo "没找到 root"
+fi
+```
+
+综合示例（考纲要求的四项一次用全）：
+
+```bash
+#!/bin/bash
+if [ -f "$1" ]; then
+    lines=$(wc -l < "$1")        # 只取数字，不带文件名
+    echo "$1 共有 $lines 行"
+else
+    echo "文件不存在：$1" >&2     # 错误信息走 stderr
+    exit 1
+fi
+```
+
+| 写法 | 作用 |
+| --- | --- |
+| `$(命令)` | 命令替换，取输出作为值 |
+| `$((表达式))` | 算术运算 |
+| `` `命令` `` | 旧式命令替换，不支持嵌套，用 `$()` 替代 |
+| `>&2` | 把输出重定向到标准错误 |
+| `$?` | 上一条命令的退出码 |
+
+> `wc -l < file` 与 `wc -l file` 的区别：前者只输出数字，后者带文件名——脚本里取值要用前者。

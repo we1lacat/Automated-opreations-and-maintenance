@@ -809,6 +809,100 @@ esac
 - **`\*)`**：默认通配模式，匹配前面所有模式都没匹配到的内容，作用类似 `if` 里的 `else`。
 - **`esac`**：语句结束关键字（就是 `case` 反着拼）。
 
+#### for 循环
+
+遍历一个列表（列表可以是字面量、文件通配、命令输出）：
+
+```bash
+# 遍历字面量
+for i in 1 2 3; do
+    echo "第 $i 个"
+done
+
+# 遍历目录下的文件（最常用）
+for f in /var/log/*.log; do
+    echo "== $f =="
+    tail -n 3 "$f"
+done
+
+# C 风格计数循环
+for ((i = 1; i <= 5; i++)); do
+    echo "$i"
+done
+```
+
+#### while 与 until 循环
+
+```bash
+# while：条件成立时循环
+count=1
+while [ "$count" -le 5 ]; do
+    echo "$count"
+    count=$((count + 1))
+done
+
+# until：条件不成立时循环（与 while 相反）
+num=1
+until [ "$num" -gt 3 ]; do
+    echo "num=$num"
+    num=$((num + 1))
+done
+
+# 按行读文件（批量处理的标准写法，比 for 遍历更稳）
+while read -r line; do
+    echo "$line"
+done < /etc/passwd
+
+# 无限循环 + break / continue
+while true; do
+    read -p "输入 q 退出：" ans
+    [ "$ans" = "q" ] && break
+    [ -z "$ans" ] && continue
+    echo "你输入了：$ans"
+done
+```
+
+> **`for f in $(ls)` 有坑**：文件名带空格会被拆成多个词。遍历文件用通配 `for f in /path/*`，遍历内容用 `while read -r line`。
+
+#### 位置参数与特殊变量
+
+脚本运行时传进来的参数叫**位置参数**：
+
+| 变量 | 含义 |
+| --- | --- |
+| `$0` | 脚本名本身 |
+| `$1` `$2` … | 第 1、2 个位置参数（第 10 个起要写 `${10}`） |
+| `$#` | 位置参数的个数 |
+| `$@` | 所有参数，`"$@"` 会保留每个参数的边界（推荐） |
+| `$*` | 所有参数合成一个字符串（少用） |
+| `$?` | **上一条命令**的退出码，0 表示成功 |
+| `$$` | 当前脚本的进程号 |
+
+```bash
+#!/bin/bash
+# 参数个数不足就提示用法并退出
+if [ $# -lt 2 ]; then
+    echo "用法：$0 <源目录> <目标目录>"
+    exit 1
+fi
+
+for dir in "$@"; do
+    echo "处理目录：$dir"
+done
+
+# 取命令输出作为变量值
+today=$(date +%F)
+count=$(ls -1 /var/log/*.log 2>/dev/null | wc -l)
+echo "今天是 $today，日志文件共 $count 个"
+
+# 用退出码判断上一步是否成功
+if grep -q "root" /etc/passwd; then
+    echo "找到了 root"
+fi
+```
+
+> `$1` 这类位置参数**只在脚本内有效**；函数里想用脚本的参数，要先在调用函数时传进去，或直接用全局的 `$1`（不推荐，可读性差）。
+
 #### shell 函数开发
 
 函数的特点和 `alias` 类似：可以简化 Linux 命令操作，让整条命令更可读、更好用。

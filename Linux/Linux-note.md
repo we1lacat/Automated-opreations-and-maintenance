@@ -278,6 +278,23 @@ futa  lover.txt
 [king@node2 apple]$
 ```
 
+#### ln：硬链接与软链接
+
+```bash
+ln 源文件 硬链接名        # 硬链接
+ln -s 源文件 软链接名     # 软链接（符号链接）
+```
+
+| 对比 | 硬链接 | 软链接 |
+| --- | --- | --- |
+| 本质 | 同一个 inode 的第二个名字 | 指向源文件**路径**的新文件 |
+| 源文件删掉后 | 还能用（inode 还在） | 变成死链接 |
+| 跨文件系统 | 不能 | 能 |
+| 链接目录 | 普通用户不能 | 能 |
+
+> `ls -l` 里软链接首字符是 `l`、硬链接是普通 `-`；看 inode 用 `ls -li`。
+> 删源文件前先想清楚删的是名字还是数据：硬链接删一个名字 inode 还在，软链接删了源文件链接就全断。
+
 ---
 
 ### 3.5 文件查看
@@ -1777,12 +1794,28 @@ Command (m for help): n       # 建分区操作与 MBR 一样
 | xfs | 大文件 / 大分区性能好，支持**在线扩容**，**不能缩容** | RHEL / Rocky / CentOS 默认 |
 | ext4 | 最通用、稳，修复工具成熟，可扩可缩 | Debian / Ubuntu 默认，通用场景 |
 | swap | 交换分区，不是用来存文件的 | 内存不足时的兜底 |
+| vfat | 与 Windows 互操作 | 双系统 / 可移动介质 |
 
 ```bash
 mkfs.xfs /dev/sdb1        # 建 xfs 文件系统（会清空数据！）
 mkfs.ext4 /dev/sdb1       # 建 ext4
 df -Th                    # 看已挂载的文件系统类型与用量
 ```
+
+#### swap：创建与启用
+
+内存不足时系统会把不常用的页换到 swap（交换分区）。**物理内存 < 4G 建议 swap ≥ 2G**。
+
+```bash
+mkswap /dev/sdb2          # 在空分区上建 swap
+swapon /dev/sdb2          # 立即启用
+swapoff /dev/sdb2         # 关闭
+swapon --show             # 查看当前 swap
+free -h                   # 顺带看内存与 swap 用量
+```
+
+> 开机自动启用也要写 `/etc/fstab`：`/dev/sdb2  none  swap  defaults  0 0`。
+> swap 不是越多越好——**swap 被大量使用说明物理内存真的不够了**，该加内存或查内存泄漏。
 
 #### mount：挂载
 
@@ -2196,6 +2229,47 @@ init [0123456]       # 切换不同运行级别
 
 > 单用户模式下可以找回丢失的 root 密码：重启进入运行级别 1，直接用 `passwd` 修改密码（需在物理机 / 控制台操作）。
 
+### 9.1 中断启动：找回 root 密码的另一种姿势
+
+> RHCSA 考点：在物理机 / 控制台中断引导进入单用户环境。
+
+方式一是上面说的运行级别 1；方式二用 **`rd.break`**（initramfs 阶段打断，更通用）：
+
+1. 开机按 `Esc` / `e` 编辑 GRUB 菜单；
+2. 在 `linux` 行末尾加 `rd.break`（或 `init=/bin/bash`），按 `Ctrl + X` 启动；
+3. 进入 initramfs shell 后把根重新挂载为可写并切换：
+
+```bash
+mount -o remount,rw /sysroot
+chroot /sysroot
+passwd root            # 改密码
+touch /.autorelabel    # SELinux 必做：否则登录被 SELinux 拒绝
+exit
+reboot
+```
+
+> **`touch /.autorelabel` 是关键漏点**：rd.break 改密码会污染 `/etc/shadow` 的 SELinux 标签，不加这行重启后登录失败（原理见 §7.11 SELinux 基础）。
+
+### 9.2 引导配置：grub2
+
+| 文件 / 命令 | 作用 |
+| --- | --- |
+| `/boot/grub2/grub.cfg` | 实际生效的配置（**不要直接改**，重新生成会被覆盖） |
+| `/etc/default/grub` | 生成配置的依据（内核参数、超时等） |
+| `grub2-mkconfig -o /boot/grub2/grub.cfg` | 重新生成配置 |
+| `GRUB_CMDLINE_LINUX` | `/etc/default/grub` 里的内核参数行 |
+
+```bash
+# 示例：给内核加参数（如关闭 IPv6）
+sed -i 's/GRUB_CMDLINE_LINUX="/GRUB_CMDLINE_LINUX="ipv6.disable=1 /' /etc/default/grub
+grub2-mkconfig -o /boot/grub2/grub.cfg
+reboot
+```
+
+> 改错内核参数可能起不来——改前备份 `cp /etc/default/grub /etc/default/grub.bak`，并在 GRUB 菜单里能临时编辑回滚。
+
+---
+
 ## 十、进程与服务管理
 
 > 对应 RHCSA「Operate running systems」：识别资源消耗进程、调整调度优先级、用信号控制进程、定位系统日志。
@@ -2501,9 +2575,69 @@ atq / atrm 任务号          # 查看 / 删除 at 任务
 
 ## 十二、网络与安全基础
 
-> 对应 RHCSA「Manage security」与网络基础：防火墙放行、SSH 密钥登录、时间同步。
+> 对应 RHCSA「Configure networking and hostname resolution」与「Manage security」：配置 IPv4/IPv6 地址与主机名、防火墙放行、SSH 密钥登录、时间同步。
 
-### 12.1 firewalld
+### 12.1 网络配置：nmcli
+
+RHEL 9 用 NetworkManager 管理网络，命令行工具是 `nmcli`。**两个核心对象**：`device`（网卡硬件）与 `connection`（连接配置，可有多套但同一时间只有一套活跃）。
+
+```bash
+nmcli device status              # 网卡及连接状态（排障第一步）
+nmcli general status             # 全局状态：连没连、hostname
+nmcli connection show            # 列出所有连接配置
+nmcli connection show --active   # 只看当前活跃的
+ip addr                          # 看实际拿到的 IP（nmcli 管配置，ip 看现状）
+```
+
+配置静态 IP（DHCP 换成固定地址）：
+
+```bash
+# 新建一条连接并配静态 IPv4
+nmcli connection add type ethernet con-name static-ens160 ifname ens160 \
+  ipv4.method manual \
+  ipv4.addresses 192.168.128.10/24 \
+  ipv4.gateway 192.168.128.1 \
+  ipv4.dns 223.5.5.5,119.29.29.29 \
+  ipv6.method disabled
+
+nmcli connection up static-ens160        # 启用（不 up 不生效）
+```
+
+修改已有连接（不重建，直接改字段后重新激活）：
+
+```bash
+nmcli connection modify ens160 ipv4.addresses 192.168.128.20/24 ipv4.gateway 192.168.128.1 ipv4.dns 8.8.8.8 ipv4.method manual
+nmcli connection up ens160
+```
+
+| 常用操作 | 命令 |
+| --- | --- |
+| 改回 DHCP | `nmcli connection modify ens160 ipv4.method auto ipv4.addresses '' ipv4.gateway ''` |
+| 临时断开 / 重连网卡 | `nmcli device disconnect ens160` / `nmcli device connect ens160` |
+| 删除一条连接 | `nmcli connection delete static-ens160` |
+| 改主机名 | `hostnamectl set-hostname node1.example.com` |
+| 看主机名 | `hostnamectl status` |
+
+> **改完必须 `nmcli connection up`（或 `nmcli device connect`）才生效**——只 `modify` 不激活，`ip addr` 看到的还是旧地址，这是最常见的「改了没反应」。
+> `con-name` 是逻辑名、`ifname` 是网卡名，两者可以不同；一个网卡可以有多套 `con-name`，按需切换。
+> 远程改 IP 前先确认新地址能通（或留一条 DHCP 连接兜底），否则改完就失联。
+
+#### 主机名解析：/etc/hosts
+
+DNS 之前的本地解析表，优先级高于 DNS（查 `/etc/nsswitch.conf` 的 `hosts:` 行）。
+
+```bash
+cat /etc/hosts
+# 127.0.0.1   localhost localhost.localdomain
+# ::1         localhost localhost.localdomain
+192.168.128.10 node1.example.com node1     # 格式：IP  FQDN  短名
+
+getent hosts node1        # 验证解析是否生效
+```
+
+> 本地测试多域名、K8s 集群节点互认、临时屏蔽某域名（指到 127.0.0.1）都靠它。
+
+### 12.2 firewalld
 
 ```bash
 systemctl status firewalld                    # 确认在跑
@@ -2521,7 +2655,7 @@ firewall-cmd --reload                         # 重载（不加 permanent 的立
 
 > 排障顺序：`firewall-cmd --list-all` 看当前放行 → `--add-service` 加 → `--reload`。少加 `--permanent` 的话重启就丢。
 
-### 12.2 SSH
+### 12.3 SSH
 
 ```bash
 ssh-keygen -t ed25519          # 生成本机密钥对
@@ -2541,7 +2675,26 @@ systemctl restart sshd        # 改完配置重启生效
 
 > 改 sshd_config 前先**保留一个已连接的会话**，改错了还能从旧会话改回来——否则把自己锁在外面。
 
-### 12.3 时间同步
+#### scp / sftp：安全传输文件
+
+```bash
+scp file user@host:/tmp/              # 本机 → 远端
+scp user@host:/var/log/messages .     # 远端 → 本机
+scp -r dir user@host:/tmp/            # 递归传目录
+scp -P 2222 file user@host:/tmp/      # 非默认端口
+
+sftp user@host                        # 交互式传输
+```
+
+| 对比 | scp | sftp |
+| --- | --- | --- |
+| 风格 | 单条命令，拷完就走 | 交互式会话，可浏览远端目录 |
+| 断点续传 | 不支持 | 支持（`reget`） |
+| 适用 | 脚本里一次性传文件 | 人工翻看、大量文件 |
+
+> 大文件 / 大量小文件更推荐 `rsync -avz`（增量、断点续传、可压缩），它不是 SSH 默认自带但绝大多数发行版都有。
+
+### 12.4 时间同步
 
 ```bash
 timedatectl                     # 看当前时间与时区
@@ -2646,7 +2799,6 @@ screen -r dl
 # 直接后台建会话（非交互式）
 screen -dmS dl bash -c 'wget -c URL; exec bash'
 ```
-
 
 #### 方案 C：systemd 托管（长期/服务器/需自动重启，最健壮）
 

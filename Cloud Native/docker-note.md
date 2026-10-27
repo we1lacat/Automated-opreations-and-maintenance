@@ -295,7 +295,7 @@ exit #退出容器
 docker ps
 	 #列出所有的运行容器
 -a   #列出所有的运行容器+带出1历史运行过的容器
--n=? #显示最近创建的容器
+-n ? #显示最近创建的容器
 -q	 #只显示容器编号
 ```
 
@@ -337,7 +337,7 @@ docker  run -d imagename
 #### 查看日志
 
 ```
-docker logs -f -t --tail #容器，没有日志
+docker logs -f -t --tail 1 dockerid #容器，没有日志
 
 -tf				#显示日志
 --tail nummmber #显示指定数量日志1
@@ -426,7 +426,7 @@ docker atttach dockerid
 #### 从容器拷贝文件到本机
 
 ```
-docker cp ddockerid fileposition aimroute
+docker cp dockerid fileposition aimroute
 #拷贝是手动过程，未来使用-v卷可以实现
 ```
 
@@ -1129,8 +1129,6 @@ Docker 安装后会在宿主机创建一个虚拟网桥 **docker0**，每个容�
 
 ### 通信流程
 
-预览
-
 查看代码
 
 ```
@@ -1149,10 +1147,6 @@ flowchart TB
     end
     Internet -->|"iptables NAT"| docker0
 ```
-
-豆包
-
-你的 AI 助手，助力每日工作学习
 
 ------
 
@@ -1451,8 +1445,7 @@ Options:
 # --gateway 192.168.0.1
 docker network create --driver bridge --subnet 192.168.0.0/16 --gateway 192.168.0.1 mynet
 
-#不同集群推荐使用不同网络这就涉及到网络联通
-      
+#不同集群推荐使用不同网络这就涉及到网络联通      
 ```
 
 ### 网络联通
@@ -1529,7 +1522,7 @@ Docker Desktop 和新版 Docker Engine 一般都自带，**先确认**：
 
 ```bash
 docker compose version
-# Docker Compose version v2.29.1
+# Docker Compose version vx.xx.x
 ```
 
 没有就单独装插件：
